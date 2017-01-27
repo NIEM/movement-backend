@@ -1,8 +1,6 @@
 FROM node:boron
 MAINTAINER Sam Rubin "srubin@deloitte.com"
 
-RUN yum install -y gcc-c++ make
-
 # Set npm log level override
 # ENV NPM_CONFIG_LOGLEVEL warn
 ENV NPM_CONFIG_PROGRESS false
@@ -14,7 +12,7 @@ WORKDIR /usr/src/app
 
 # Install app dependencies
 COPY package.json /usr/src/app/
-RUN npm install
+RUN npm install --unsafe-perms
 
 # Bundle app source
 COPY . /usr/src/app
