@@ -2,7 +2,7 @@ FROM node:boron
 MAINTAINER Sam Rubin "srubin@deloitte.com"
 
 # Set npm log level override
-ENV NPM_CONFIG_LOGLEVEL warn
+# ENV NPM_CONFIG_LOGLEVEL warn
 
 # Create app directory
 RUN mkdir -p /usr/src/app
