@@ -1,6 +1,6 @@
-Node Project Template
-=================
-An example Express project with the following features:
+NIEM - WIST: Backend
+====================
+An Express project with the following features:
 
 * Authentication and Session Storage via passport
 * Data persistence with MongoDB using the Mongoose ODM
