@@ -2,7 +2,7 @@ FROM node:boron
 MAINTAINER Sam Rubin "srubin@deloitte.com"
 
 # Set npm log level override
-# ENV NPM_CONFIG_LOGLEVEL warn
+ENV NPM_CONFIG_LOGLEVEL warn
 ENV NPM_CONFIG_PROGRESS false
 ENV NPM_CONFIG_SPIN false
 
