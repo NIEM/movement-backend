@@ -18,4 +18,4 @@ RUN npm install
 COPY . /usr/src/app
 
 EXPOSE 7000
-# CMD [ "npm", "start" ]
+CMD [ "npm", "start" ]
