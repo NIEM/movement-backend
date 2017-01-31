@@ -1,5 +1,28 @@
 NIEM - WIST: Backend
 ====================
+
+The other repositories include the [WIST - Webapp](https://github.com/NIEMconnects/wist-frontend) and the [WIST - Solr](https://github.com/NIEMconnects/wist-solr).
+
+# Backend Setup
+
+Backend is run via Docker. To run the node app locally with Docker:
+
+```
+docker build -t wist-backend .
+docker run -d -p 7000:7000 -t wist-backend
+```
+
+# Jenkins Job Setup 
+
+```
+#!bin/bash
+chmod u+x deploy.sh
+./deploy.sh
+```
+
+
+# Node App Features
+
 An Express project with the following features:
 
 * Authentication and Session Storage via passport
