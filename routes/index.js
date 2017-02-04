@@ -21,7 +21,12 @@ module.exports = function(app) {
 	// app.post('/example', authenticate, require('./example/POST'));
 	// app.put('/example/:id', authenticate, require('./example/PUT'));
 	// app.delete('/example/:id', authenticate, require('./example/DELETE'));
-	app.get('/example', require('./example/GET'));
+	// app.get('/example', require('./example/GET'));
+
+	/**
+	* GET endpoint for requesting JSON schema
+	*/
+	app.get('/jsonschema', require('./jsonschema/GET'));
 
 	app.use(errorHandler);
 };
