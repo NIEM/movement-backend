@@ -11,17 +11,10 @@ let cors = require('middleware/cors');
 module.exports = function(app) {
 	app.use(cors);
 
-	app.post('/login', require('./login'));
-	app.post('/logout', require('./logout'));
-	app.post('/addUser', require('./AddUser'));
-
 	/**
-	* Example of CRUD endpoints backed by Mongoose
+	* GET endpoint for requesting JSON schema
 	*/
-	app.post('/example', authenticate, require('./example/POST'));
-	app.put('/example/:id', authenticate, require('./example/PUT'));
-	app.delete('/example/:id', authenticate, require('./example/DELETE'));
-	app.get('/example', authenticate, require('./example/GET'));
+	app.get('/jsonschema', require('./jsonschema/GET'));
 
 	app.use(errorHandler);
 };
