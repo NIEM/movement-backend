@@ -29,7 +29,7 @@ module.exports = function jsonschema(req, res, next) {
       });
     }, (err) => {
       if (err) {
-        returnResponse(400, 'Error processing JSON Schema request.');
+        returnResponse(400, 'Error processing JSON Schema request.'); 
       } else {
         returnResponse(200, respArr);
       }
@@ -69,7 +69,6 @@ function getElementObjects(typeDoc) {
   });
 }
 
-// need to do something with the promise here
 function getTypeObject(elementDoc) {
 
   let typeQuery = 'name:' + elementDoc.type.split(':')[1];
