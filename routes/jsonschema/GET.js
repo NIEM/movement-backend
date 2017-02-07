@@ -22,29 +22,27 @@ module.exports = function jsonschema(req, res, next) {
     let elArr = [];
     async.each(elements, (el, callback) => {
       let elQuery = 'id:' + el.split(':')[0] + '\\:' + el.split(':')[1];
-      makeSolrRequest(buildQueryString(elQuery), (err, solrResponse) => {
-        if (err) {
-          callback(err);
-          return;
-        } else {
-          let elDoc = solrResponse;
-          elArr.push(elDoc);
-          if (elDoc.type) {
-            getTypeObject(elDoc.type).then( (typeDoc) => {
-              elDoc.type = typeDoc;
-              if (elDoc.type.elements) {
-                getElementObjects(elDoc.type.elements, (arr) => {
-                  elDoc.type.elements = arr;
-                  callback();
-                });
-              } else {
+      makeSolrRequest(buildQueryString(elQuery)).then( (solrResponse) => {
+        let elDoc = solrResponse;
+        elArr.push(elDoc);
+        if (elDoc.type) {
+          getTypeObject(elDoc.type).then( (typeDoc) => {
+            elDoc.type = typeDoc;
+            if (elDoc.type.elements) {
+              getElementObjects(elDoc.type.elements, (arr) => {
+                elDoc.type.elements = arr;
                 callback();
-              }
-            });
-          } else {
-            callback();
-          }
+              });
+            } else {
+              callback();
+            }
+          });
+        } else {
+          callback();
         }
+      }).catch( (err) => {
+        callback(err);
+        return;
       });
     }, (err) => {
       if (err) {
@@ -73,15 +71,12 @@ function buildQueryString(query) {
 
 
 function getTypeObject(typeName) {
-
   let typeQuery = 'name:' + typeName.split(':')[1];
   return new Promise((resolve, reject) => {
-    makeSolrRequest(buildQueryString(typeQuery), (err, solrResponse) => {
-      if (err) {
-        return reject(err);
-      }
-
-      return resolve(solrResponse); 
+    makeSolrRequest(buildQueryString(typeQuery)).then( (solrResponse) => {
+      return resolve(solrResponse);
+    }).catch( (err) => {
+      return reject(err);
     });
   });
 }
