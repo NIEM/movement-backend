@@ -7,7 +7,7 @@ const http = require('http');
 function makeSolrRequest(query, callback) {
 
   let options = {
-    hostname: 'wist-solr',
+    hostname: '192.168.99.100',
     port: 8983,
     path: '/solr/dhsniem/select?' + query,
     method: 'GET',

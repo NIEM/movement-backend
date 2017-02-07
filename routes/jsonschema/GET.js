@@ -10,32 +10,59 @@ const querystring = require('querystring');
 module.exports = function jsonschema(req, res, next) {
 
   let itemsToExport = req.query.itemsToExport;
-  let respArr = [];
+  // let respArr = [];
 
   if (itemsToExport) {
-    async.each(itemsToExport, (item, callback) => {
-      let idQuery = 'id:' + item.split(':')[0] + '\\:' + item.split(':')[1];
-      makeSolrRequest(buildQueryString(idQuery), (err, solrResponse) => {
+    getElementObjects(itemsToExport);
+  } else {
+    returnResponse(400, 'Must specify items to export.');
+  }
+
+
+  function getElementObjects(elements, cb) {
+    let elArr = [];
+    async.each(elements, (el, callback) => {
+      let elQuery = 'id:' + el.split(':')[0] + '\\:' + el.split(':')[1];
+      makeSolrRequest(buildQueryString(elQuery), (err, solrResponse) => {
         if (err) {
           callback(err);
           return;
         } else {
-          getTypeObject(solrResponse).then( (typeDoc) => {
-            solrResponse.type = typeDoc;
-            respArr.push(solrResponse);
+          el = solrResponse;
+          elArr.push(el);
+          if (el.type) {
+            getTypeObject(el.type).then( (typeDoc) => {
+              el.type = typeDoc;
+              if (el.type.elements) {
+                getElementObjects(el.type.elements, (err, arr) => {
+                  if (err) {
+                    callback(err);
+                  } else {
+                    el.type.elements = arr;
+                    callback();
+                  }
+                });
+              } else {
+                callback();
+              }
+            });
+          } else {
             callback();
-          });
+          }
         }
       });
     }, (err) => {
       if (err) {
-        returnResponse(400, 'Error processing JSON Schema request.'); 
+        cb(err);
+        returnResponse(400, 'Error processing JSON Schema request.');
       } else {
-        returnResponse(200, respArr);
+        if (cb) {
+          cb(null, elArr);
+        } else {
+          returnResponse(200, elArr);
+        }
       }
-    });  
-  } else {
-    returnResponse(400, 'Must specify items to export.');
+    });
   }
 
   function returnResponse(status, data) {
@@ -43,6 +70,7 @@ module.exports = function jsonschema(req, res, next) {
   }
 
 };
+
 
 function buildQueryString(query) {
   return querystring.stringify({
@@ -52,26 +80,9 @@ function buildQueryString(query) {
 }
 
 
-function getElementObjects(typeDoc) {
-  typeDoc.elements.forEach( (element, index, arr) => {
-    let elementQuery = 'name:' + element.split(':')[1];
+function getTypeObject(typeName) {
 
-    makeSolrRequest(buildQueryString(elementQuery), (err, solrResponse) => {
-      arr[index] = solrResponse;
-
-      if (arr[index].type) {
-        getTypeObject(arr[index]).then( (typeDoc) => {
-          arr[index].type = typeDoc;
-        });
-      }
-    });
-
-  });
-}
-
-function getTypeObject(elementDoc) {
-
-  let typeQuery = 'name:' + elementDoc.type.split(':')[1];
+  let typeQuery = 'name:' + typeName.split(':')[1];
   return new Promise((resolve, reject) => {
     makeSolrRequest(buildQueryString(typeQuery), (err, solrResponse) => {
       if (err) {
