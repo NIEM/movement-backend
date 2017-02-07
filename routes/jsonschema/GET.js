@@ -14,17 +14,21 @@ module.exports = function jsonschema(req, res, next) {
 
   if (itemsToExport) {
     async.each(itemsToExport, (item, callback) => {
-      makeSolrRequest(buildQueryString(item), (err, itemJSON) => {
+      let idQuery = 'id:' + item.split(':')[0] + '\\:' + item.split(':')[1];
+      makeSolrRequest(buildQueryString(idQuery), (err, solrResponse) => {
         if (err) {
           callback(err);
           return;
-        } else if (itemJSON) {
-          respArr.push(itemJSON);
+        } else {
+          let itemJSON = solrResponse.docs[0];
+          if (itemJSON) {
+            respArr.push(itemJSON);
+          }
           callback();
         }
       });
     }, (err) => {
-      if( err ) {
+      if (err) {
         returnResponse(400, 'Error processing JSON Schema request.');
       } else {
         returnResponse(200, respArr);
@@ -40,9 +44,9 @@ module.exports = function jsonschema(req, res, next) {
 
 };
 
-function buildQueryString(item) {
+function buildQueryString(query) {
   return querystring.stringify({
-    'q': 'name:' + item,
+    'q': query,
     'wt': 'json'
   });
 }

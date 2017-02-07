@@ -6,7 +6,7 @@ const http = require('http');
 
 function makeSolrRequest(query, callback) {
 
-  var options = {
+  let options = {
     hostname: 'wist-solr',
     port: 8983,
     path: '/solr/dhsniem/select?' + query,
@@ -16,19 +16,20 @@ function makeSolrRequest(query, callback) {
     }
   };
 
-  var req = http.request(options, (res) => {
+  let req = http.request(options, (res) => {
 
     res.setEncoding('utf8');
-    var responseBody = '';
+    let responseBody = '';
 
     res.on('data', (chunk) => {
       responseBody += chunk;
     });
 
     res.on('end', () => {
-      if (res.statusCode === 200 || res.statusCode === 201) {
-        callback(null, JSON.parse(responseBody).response.docs[0]);
+      if (res.statusCode === 200 || res.statusCode === 201 ) {
+        callback(null, JSON.parse(responseBody).response);
       } else {
+        callback(res.statusCode);
         console.log('Server status error: ', res.statusCode);
       }
       
@@ -37,6 +38,7 @@ function makeSolrRequest(query, callback) {
   });
 
   req.on('error', (err) => {
+    callback(err.message);
     console.log(`${err.message}`);
   });
 
