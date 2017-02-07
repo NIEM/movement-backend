@@ -25,14 +25,16 @@ function makeSolrRequest(query, callback) {
       responseBody += chunk;
     });
 
+    // Callback with error if no docs found or other errors. Otherwise send over the first doc found.
     res.on('end', () => {
-      if (res.statusCode === 200 || res.statusCode === 201 ) {
-        callback(null, JSON.parse(responseBody).response);
+      if (!JSON.parse(responseBody).response.docs[0]) {
+        callback(JSON.parse(responseBody).response);
+      } else if (res.statusCode === 200 || res.statusCode === 201 ) {
+        callback(null, JSON.parse(responseBody).response.docs[0]);
       } else {
         callback(res.statusCode);
         console.log('Server status error: ', res.statusCode);
       }
-      
     });
 
   });

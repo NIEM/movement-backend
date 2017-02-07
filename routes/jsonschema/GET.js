@@ -20,11 +20,11 @@ module.exports = function jsonschema(req, res, next) {
           callback(err);
           return;
         } else {
-          let itemJSON = solrResponse.docs[0];
-          if (itemJSON) {
-            respArr.push(itemJSON);
-          }
-          callback();
+          getTypeObject(solrResponse).then( (typeDoc) => {
+            solrResponse.type = typeDoc;
+            respArr.push(solrResponse);
+            callback();
+          });
         }
       });
     }, (err) => {
@@ -48,5 +48,38 @@ function buildQueryString(query) {
   return querystring.stringify({
     'q': query,
     'wt': 'json'
+  });
+}
+
+
+function getElementObjects(typeDoc) {
+  typeDoc.elements.forEach( (element, index, arr) => {
+    let elementQuery = 'name:' + element.split(':')[1];
+
+    makeSolrRequest(buildQueryString(elementQuery), (err, solrResponse) => {
+      arr[index] = solrResponse;
+
+      if (arr[index].type) {
+        getTypeObject(arr[index]).then( (typeDoc) => {
+          arr[index].type = typeDoc;
+        });
+      }
+    });
+
+  });
+}
+
+// need to do something with the promise here
+function getTypeObject(elementDoc) {
+
+  let typeQuery = 'name:' + elementDoc.type.split(':')[1];
+  return new Promise((resolve, reject) => {
+    makeSolrRequest(buildQueryString(typeQuery), (err, solrResponse) => {
+      if (err) {
+        return reject(err);
+      }
+
+      return resolve(solrResponse); 
+    });
   });
 }
