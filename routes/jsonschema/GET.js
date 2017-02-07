@@ -10,7 +10,6 @@ const querystring = require('querystring');
 module.exports = function jsonschema(req, res, next) {
 
   let itemsToExport = req.query.itemsToExport;
-  // let respArr = [];
 
   if (itemsToExport) {
     getElementObjects(itemsToExport);
@@ -28,19 +27,15 @@ module.exports = function jsonschema(req, res, next) {
           callback(err);
           return;
         } else {
-          el = solrResponse;
-          elArr.push(el);
-          if (el.type) {
-            getTypeObject(el.type).then( (typeDoc) => {
-              el.type = typeDoc;
-              if (el.type.elements) {
-                getElementObjects(el.type.elements, (err, arr) => {
-                  if (err) {
-                    callback(err);
-                  } else {
-                    el.type.elements = arr;
-                    callback();
-                  }
+          let elDoc = solrResponse;
+          elArr.push(elDoc);
+          if (elDoc.type) {
+            getTypeObject(elDoc.type).then( (typeDoc) => {
+              elDoc.type = typeDoc;
+              if (elDoc.type.elements) {
+                getElementObjects(elDoc.type.elements, (arr) => {
+                  elDoc.type.elements = arr;
+                  callback();
                 });
               } else {
                 callback();
@@ -53,14 +48,11 @@ module.exports = function jsonschema(req, res, next) {
       });
     }, (err) => {
       if (err) {
-        cb(err);
         returnResponse(400, 'Error processing JSON Schema request.');
+      } else if (cb) {
+        cb(elArr);
       } else {
-        if (cb) {
-          cb(null, elArr);
-        } else {
-          returnResponse(200, elArr);
-        }
+        returnResponse(200, elArr);
       }
     });
   }
