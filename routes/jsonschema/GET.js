@@ -10,6 +10,7 @@ const querystring = require('querystring');
 module.exports = function jsonschema(req, res, next) {
 
   let itemsToExport = req.query.itemsToExport;
+  let addedItems = [];
 
   if (itemsToExport) {
     getElementObjects(itemsToExport);
@@ -36,6 +37,8 @@ module.exports = function jsonschema(req, res, next) {
             } else {
               callback();
             }
+          }).catch( (err) => {
+            callback(err);
           });
         } else {
           callback();
