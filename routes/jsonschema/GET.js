@@ -11,6 +11,11 @@ module.exports = function jsonschema(req, res, next) {
 
   let itemsToExport = req.query.itemsToExport;
   let addedItems = [];
+  let schemaExport = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "additionalProperties": false,
+    "properties": {}
+  };
 
   if (itemsToExport) {
     getElementObjects(itemsToExport);
@@ -30,18 +35,37 @@ module.exports = function jsonschema(req, res, next) {
     // TODO: Move node async with callbacks to a promise based asynchronous handling
     async.each(elements, (el, callback) => {
       let elQuery = 'id:' + el.split(':')[0] + '\\:' + el.split(':')[1];
+      let elSchema = {};
+
+
       makeSolrRequest(buildQueryString(elQuery)).then( (solrResponse) => {
         let elDoc = solrResponse;
         elArr.push(elDoc);
+        elSchema.description = elDoc.definition;
+
         if (elDoc.type) {
           getTypeObject(elDoc.type).then( (typeDoc) => {
             elDoc.type = typeDoc;
             if (elDoc.type.elements) {
+              elSchema.type = "object";
+              elSchema.additionalProperties = false;
+              elSchema.properties = {};
+
+              elDoc.type.elements.forEach( (element) => {
+                elSchema.properties[element] = {
+                  "$ref": "#/properties/" + element
+                };
+              });
+
+              schemaExport.properties[el] = elSchema;
+
               getElementObjects(elDoc.type.elements, (arr) => {
                 elDoc.type.elements = arr;
                 callback();
               });
             } else {
+              elSchema.type = elDoc.type.name;
+              schemaExport.properties[el] = elSchema;
               callback();
             }
           }).catch( (err) => {
@@ -49,6 +73,7 @@ module.exports = function jsonschema(req, res, next) {
             return;
           });
         } else {
+          schemaExport.properties[el] = elSchema;
           callback();
         }
       }).catch( (err) => {
@@ -61,7 +86,8 @@ module.exports = function jsonschema(req, res, next) {
       } else if (cb) {
         cb(elArr);
       } else {
-        returnResponse(200, elArr);
+        // returnResponse(200, elArr);
+        returnResponse(200, schemaExport);
       }
     });
   }
@@ -90,4 +116,8 @@ function getTypeObject(typeName) {
       return reject(err);
     });
   });
+}
+
+function generateSchema() {
+
 }
