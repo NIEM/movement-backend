@@ -27,7 +27,7 @@ module.exports = function jsonschema(req, res, next) {
     
     addedItems.push.apply(addedItems, elements);
 
-
+    // TODO: Move node async with callbacks to a promise based asynchronous handling
     async.each(elements, (el, callback) => {
       let elQuery = 'id:' + el.split(':')[0] + '\\:' + el.split(':')[1];
       makeSolrRequest(buildQueryString(elQuery)).then( (solrResponse) => {
@@ -61,8 +61,6 @@ module.exports = function jsonschema(req, res, next) {
       } else if (cb) {
         cb(elArr);
       } else {
-        console.log('Added Items', addedItems);
-        console.log('AI Length', addedItems.length);
         returnResponse(200, elArr);
       }
     });
