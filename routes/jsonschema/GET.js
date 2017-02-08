@@ -39,6 +39,7 @@ module.exports = function jsonschema(req, res, next) {
             }
           }).catch( (err) => {
             callback(err);
+            return;
           });
         } else {
           callback();
