@@ -58,11 +58,12 @@ module.exports = function jsonschema(req, res, next) {
               });
 
               schemaExport.properties[el] = elSchema;
+              getElementObjects(elDoc.type.elements, callback);
 
-              getElementObjects(elDoc.type.elements, (arr) => {
-                elDoc.type.elements = arr;
-                callback();
-              });
+              // getElementObjects(elDoc.type.elements, (arr) => {
+              //   elDoc.type.elements = arr;
+              //   callback();
+              // });
             } else {
               elSchema.type = elDoc.type.name;
               schemaExport.properties[el] = elSchema;
@@ -84,9 +85,8 @@ module.exports = function jsonschema(req, res, next) {
       if (err) {
         returnResponse(400, 'Error processing JSON Schema request.');
       } else if (cb) {
-        cb(elArr);
+        cb();
       } else {
-        // returnResponse(200, elArr);
         returnResponse(200, schemaExport);
       }
     });
@@ -116,8 +116,4 @@ function getTypeObject(typeName) {
       return reject(err);
     });
   });
-}
-
-function generateSchema() {
-
 }

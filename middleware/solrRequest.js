@@ -9,7 +9,7 @@ function makeSolrRequest(query) {
   return new Promise((resolve, reject) => {
 
     let options = {
-      hostname: 'wist-solr',
+      hostname: '192.168.99.100',
       port: 8983,
       path: '/solr/dhsniem/select?' + query,
       method: 'GET',
