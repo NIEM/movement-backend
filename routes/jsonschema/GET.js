@@ -25,11 +25,9 @@ module.exports = function jsonschema(req, res, next) {
 
 
   function getElementObjects(elements, cb) {
-    let elArr = [];
     elements = elements.filter( (element) => {
       return addedItems.indexOf(element) < 0;
     });
-    
     addedItems.push.apply(addedItems, elements);
 
     // TODO: Move node async with callbacks to a promise based asynchronous handling
@@ -37,10 +35,8 @@ module.exports = function jsonschema(req, res, next) {
       let elQuery = 'id:' + el.split(':')[0] + '\\:' + el.split(':')[1];
       let elSchema = {};
 
-
       makeSolrRequest(buildQueryString(elQuery)).then( (solrResponse) => {
         let elDoc = solrResponse;
-        elArr.push(elDoc);
         elSchema.description = elDoc.definition;
 
         if (elDoc.type) {
@@ -60,10 +56,6 @@ module.exports = function jsonschema(req, res, next) {
               schemaExport.properties[el] = elSchema;
               getElementObjects(elDoc.type.elements, callback);
 
-              // getElementObjects(elDoc.type.elements, (arr) => {
-              //   elDoc.type.elements = arr;
-              //   callback();
-              // });
             } else {
               elSchema.type = elDoc.type.name;
               schemaExport.properties[el] = elSchema;
