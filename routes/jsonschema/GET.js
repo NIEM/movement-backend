@@ -31,6 +31,7 @@ module.exports = function jsonschema(req, res, next) {
       if (err) {
         returnResponse(400, 'Error processing JSON Schema request.');
       } else {
+        res.set("Content-Disposition", "attachment;filename=data.json");
         returnResponse(200, respArr);
       }
     });  
