@@ -31,8 +31,9 @@ module.exports = function jsonschema(req, res, next) {
       if (err) {
         returnResponse(400, 'Error processing JSON Schema request.');
       } else {
-        res.set("Content-Disposition", "attachment;filename=data.json");
-        returnResponse(200, respArr);
+        res.set('Content-Type', 'application/json; charset=utf-8');
+        res.set('Content-Disposition', 'attachment;filename=data.json');
+        returnResponse(200, JSON.stringify(respArr, null, 2));
       }
     });  
   } else {
@@ -40,7 +41,7 @@ module.exports = function jsonschema(req, res, next) {
   }
 
   function returnResponse(status, data) {
-    return res.status(status).json(data);
+    return res.status(status).send(data);
   }
 
 };
