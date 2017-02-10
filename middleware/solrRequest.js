@@ -18,6 +18,8 @@ function makeSolrRequest(query) {
       }
     };
 
+    // console.log(query);
+
     let req = http.request(options, (res) => {
       res.setEncoding('utf8');
       let responseBody = '';
@@ -27,10 +29,11 @@ function makeSolrRequest(query) {
       });
 
       res.on('end', () => {
-        if (JSON.parse(responseBody).response.docs[0]) {
-          return resolve(JSON.parse(responseBody).response.docs[0]);
+        if (JSON.parse(responseBody).response && JSON.parse(responseBody).response.docs) {
+          return resolve(JSON.parse(responseBody).response.docs);
         } else {
-          return reject('Error processing Solr Request');          
+          // return reject('Error processing Solr Request'); 
+          return resolve([]);         
         }
       });
     });

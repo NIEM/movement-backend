@@ -17,48 +17,58 @@ module.exports = function jsonschema(req, res, next) {
     "properties": {}
   };
 
+  // Validate that there are items to export from teh request query parameter
   if (itemsToExport) {
     getElementObjects(itemsToExport);
   } else {
     returnResponse(400, 'Must specify items to export.');
   }
 
-
+  // TODO: Move node async with callbacks to a promise based asynchronous handling
+  // For a given list of element names return their full document object and their children as derived from the type. Convert to JSON Schema format.
   function getElementObjects(elements, cb) {
+
+    // Filter out any elements who have already been added to the schema. Prevents infinite recursion caused by circular references in the data. 
     elements = elements.filter( (element) => {
       return addedItems.indexOf(element) < 0;
     });
     addedItems.push.apply(addedItems, elements);
 
-    // TODO: Move node async with callbacks to a promise based asynchronous handling
-    async.each(elements, (el, callback) => {
-      let elQuery = 'id:' + el.split(':')[0] + '\\:' + el.split(':')[1];
-      let elSchema = {};
+    // Pass in array of element names to return array of element documents.
+    makeSolrRequest(buildQueryString(constructOrQuery(elements))).then( (elArr) => {
 
-      makeSolrRequest(buildQueryString(elQuery)).then( (solrResponse) => {
-        let elDoc = solrResponse;
-        elSchema.description = elDoc.definition;
+      // Filter out any elements that are not a part of the business glossary.
+      elArr = elArr.filter( (elArrItem) => {
+        return elArrItem.isBG;
+      });
 
-        if (elDoc.type) {
-          getTypeObject(elDoc.type).then( (typeDoc) => {
-            elDoc.type = typeDoc;
-            if (elDoc.type.elements) {
+      // For valid elements, asynchronously make the request to recurse each. When done processing all requests in array, return the response; or call up the tree.
+      async.each(elArr, (el, callback) => {
+
+        // Start building out the JSON schema for the current element.
+        let elSchema = {};
+        elSchema.description = el.definition;
+
+        // If the element has a type defined, grab the type's full document object.
+        if (el.type) {
+          getTypeObject(el.type).then( (elType) => {
+            // If the type object contains child elements, add the references 
+            if (elType.elements) {
               elSchema.type = "object";
-              elSchema.additionalProperties = false;
               elSchema.properties = {};
 
-              elDoc.type.elements.forEach( (element) => {
+              elType.elements.forEach( (element) => {
                 elSchema.properties[element] = {
                   "$ref": "#/properties/" + element
                 };
               });
 
-              schemaExport.properties[el] = elSchema;
-              getElementObjects(elDoc.type.elements, callback);
-
+              schemaExport.properties[el.name] = elSchema;
+              getElementObjects(elType.elements, callback);
+          
             } else {
-              elSchema.type = elDoc.type.name;
-              schemaExport.properties[el] = elSchema;
+              elSchema.type = elType.name;
+              schemaExport.properties[el.name] = elSchema;
               callback();
             }
           }).catch( (err) => {
@@ -66,21 +76,20 @@ module.exports = function jsonschema(req, res, next) {
             return;
           });
         } else {
-          schemaExport.properties[el] = elSchema;
+          schemaExport.properties[el.name] = elSchema;
           callback();
         }
-      }).catch( (err) => {
-        callback(err);
-        return;
+      }, (err) => {
+        if (err) {
+          returnResponse(400, 'Error processing JSON Schema request.');
+        } else if (cb) {
+          cb();
+        } else {
+          returnResponse(200, schemaExport);
+        }
       });
-    }, (err) => {
-      if (err) {
-        returnResponse(400, 'Error processing JSON Schema request.');
-      } else if (cb) {
-        cb();
-      } else {
-        returnResponse(200, schemaExport);
-      }
+    }).catch( (err) => {
+      returnResponse(400, 'Error processing Solr request.');
     });
   }
 
@@ -90,6 +99,13 @@ module.exports = function jsonschema(req, res, next) {
 
 };
 
+function constructOrQuery(itemArr) {
+  let orQueryString = itemArr.map( (item) => {
+    return item.split(':')[0] + '\\:' + item.split(':')[1];
+  }).join(' OR ');
+
+  return 'id:(' + orQueryString + ')';
+}
 
 function buildQueryString(query) {
   return querystring.stringify({
@@ -103,7 +119,7 @@ function getTypeObject(typeName) {
   let typeQuery = 'name:' + typeName.split(':')[1];
   return new Promise((resolve, reject) => {
     makeSolrRequest(buildQueryString(typeQuery)).then( (solrResponse) => {
-      return resolve(solrResponse);
+      return resolve(solrResponse[0]);
     }).catch( (err) => {
       return reject(err);
     });
