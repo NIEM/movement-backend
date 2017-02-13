@@ -21,7 +21,7 @@ module.exports = function jsonschema(req, res, next) {
   if (itemsToExport) {
     getElementObjects(itemsToExport);
   } else {
-    returnResponse(400, 'Must specify items to export.');
+    res.status(400).json('Must specify items to export.');
   }
 
   // For a given list of element names return their full document object and their children as derived from the type. Convert to JSON Schema format.
@@ -43,31 +43,34 @@ module.exports = function jsonschema(req, res, next) {
 
       // Generate array of promises for each request in the elArr array
       let requests = elArr.map( (item) => {
-          return new Promise( (resolve) => {
-            // Add this BG element to the parent now that we have confirmed that is in fact BG
-            if (parent) {
-              schemaExport.properties[parent].properties[item.name] = {
-                "$ref": "#/properties/" + item.name
-              };
-            }
-            generateJSONSchema(item, resolve);
-          }).then( (schema) => {
-            if (schema) {
-              schemaExport.properties[item.name] = schema;
-            }
-          });
-      }, Promise.resolve());
+        
+        // Add this BG element to the parent now that we have confirmed that is in fact BG
+        if (parent) {
+          schemaExport.properties[parent].properties[item.name] = {
+            "$ref": "#/properties/" + item.name
+          };
+        }
+
+        return new Promise( (resolve) => {
+          generateJSONSchema(item, resolve);
+        }).then( (schema) => {
+          if (schema) {
+            schemaExport.properties[item.name] = schema;
+          }
+        });
+
+      });
 
       Promise.all(requests).then( () => {
         if (cb) {
           cb();
         } else {
-          returnResponse(200, schemaExport);
+          res.status(200).json(schemaExport);
         }
       });
 
     }).catch( (err) => {
-      returnResponse(400, 'Error processing Solr request.');
+      res.status(400).json('Error processing Solr request.');
     });
   }
 
@@ -80,7 +83,6 @@ module.exports = function jsonschema(req, res, next) {
     // If the element has a type defined, grab the type's full document object.
     if (el.type) {
       getTypeObject(el.type).then( (elType) => {
-        // If the type object contains child elements, add the references 
         if (elType.elements) {
           elSchema.type = "object";
           elSchema.properties = {};
@@ -99,10 +101,6 @@ module.exports = function jsonschema(req, res, next) {
     } else {
       callback(elSchema);
     }
-  }
-
-  function returnResponse(status, data) {
-    return res.status(status).json(data);
   }
 
 };
