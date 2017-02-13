@@ -18,7 +18,9 @@ module.exports = function jsonschema(req, res, next) {
 
   if (itemsToExport) {
     getElementObjects(itemsToExport).then( () => {
-      res.status(200).json(schemaExport);
+      res.set('Content-Type', 'application/json; charset=utf-8');
+      res.set('Content-Disposition', 'attachment;filename=data.json');
+      res.status(200).send(JSON.stringify(schemaExport, null, 2));
     }).catch( (err) => {
       res.status(400).json('Error processing JSON Schema request: ', err);
     });
