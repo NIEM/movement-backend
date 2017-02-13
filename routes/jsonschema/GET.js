@@ -42,16 +42,20 @@ module.exports = function jsonschema(req, res, next) {
         return elArrItem.isBG;
       });
 
+      // Generate array of promises for each request in the elArr array
+      let requests = elArr.map( (item) => {
+          return new Promise( (resolve) => {
+            // Add this BG element to the parent now that we have confirmed that is in fact BG
+            if (parent) {
+              schemaExport.properties[parent].properties[item.name] = {
+                "$ref": "#/properties/" + item.name
+              };
+            }
+            generateJSONSchema(item, resolve);
+          });
+      }, Promise.resolve());
 
-      // For valid elements, asynchronously make the request to recurse each. When done processing all requests in array, return the response; or call up the tree.
-      async.each(elArr, (el, callback) => {
-
-        // Add this BG element to the parent now that we have confirmed that is in fact BG
-        if (parent) {
-          schemaExport.properties[parent].properties[el.name] = {
-            "$ref": "#/properties/" + el.name
-          };
-        }
+      function generateJSONSchema(el, callback) {
 
         // Start building out the JSON schema for the current element.
         let elSchema = {};
@@ -82,15 +86,16 @@ module.exports = function jsonschema(req, res, next) {
           schemaExport.properties[el.name] = elSchema;
           callback();
         }
-      }, (err) => {
-        if (err) {
-          returnResponse(400, 'Error processing JSON Schema request.');
-        } else if (cb) {
+      }
+
+      Promise.all(requests).then( () => {
+        if (cb) {
           cb();
         } else {
           returnResponse(200, schemaExport);
         }
       });
+
     }).catch( (err) => {
       returnResponse(400, 'Error processing Solr request.');
     });
@@ -128,3 +133,4 @@ function getTypeObject(typeName) {
     });
   });
 }
+
