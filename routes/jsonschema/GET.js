@@ -68,25 +68,18 @@ module.exports = function jsonschema(req, res, next) {
         if (elType.elements) {
           elSchema.type = "object";
           elSchema.properties = {};
-
-          getElementObjects(elType.elements).then( (childElements) => {
-
-            childElements.forEach( (child) => {
-              elSchema.properties[child] = {
-                "$ref": "#/properties/" + child
-              };
-            });
-            
-            resolveCB(elSchema);
-
-          }).catch( (err) => {
-            rejectCB(err);
-          });
-      
+          return getElementObjects(elType.elements);
         } else {
           elSchema.type = elType.name;
-          resolveCB(elSchema);
+          resolveCB(elSchema);         
         }
+      }).then( (childElements) => {
+        childElements.forEach( (child) => {
+          elSchema.properties[child] = {
+            "$ref": "#/properties/" + child
+          };
+        });
+        resolveCB(elSchema);
       }).catch( (err) => {
         rejectCB(err);
       });
