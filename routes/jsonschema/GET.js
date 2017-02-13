@@ -28,7 +28,7 @@ module.exports = function jsonschema(req, res, next) {
   }
 
   // For a given list of element names return their full document object and their children as derived from the type. Convert to JSON Schema format.
-  function getElementObjects(elements, parent) {
+  function getElementObjects(elements) {
 
     // Filter out any elements who have already been added to the schema. Prevents infinite recursion caused by circular references in the data. 
     elements = elements.filter( (element) => {
@@ -36,54 +36,44 @@ module.exports = function jsonschema(req, res, next) {
     });
     addedItems.push.apply(addedItems, elements);
 
-    // Pass in array of element names to return array of element documents.
     return makeSolrRequest(buildQueryString(constructOrQuery(elements))).then( (elArr) => {
-
       // Filter out any elements that are not a part of the business glossary.
       elArr = elArr.filter( (elArrItem) => {
         return elArrItem.isBG;
       });
 
-      // Generate array of promises for each request in the elArr array
-      let requests = elArr.map( (item) => {
-        
-        // Add this BG element to the parent now that we have confirmed that is in fact BG
-        if (parent) {
-          schemaExport.properties[parent].properties[item.name] = {
-            "$ref": "#/properties/" + item.name
-          };
-        }
-
+      return Promise.all(elArr.map( (item) => {
         return new Promise( (resolve, reject) => {
           generateJSONSchema(item, resolve, reject);
         }).then( (schema) => {
-          if (schema) {
-            schemaExport.properties[item.name] = schema;
-          }
+          schemaExport.properties[item.name] = schema;
+          return item.name;
         });
+      }));
 
-      });
-
-      return Promise.all(requests);
     });
   }
 
   function generateJSONSchema(el, resolveCB, rejectCB) {
-
-    // Start building out the JSON schema for the current element.
     let elSchema = {};
     elSchema.description = el.definition;
 
-    // If the element has a type defined, grab the type's full document object.
     if (el.type) {
       getTypeObject(el.type).then( (elType) => {
         if (elType.elements) {
           elSchema.type = "object";
           elSchema.properties = {};
-          schemaExport.properties[el.name] = elSchema;
 
-          getElementObjects(elType.elements, el.name).then( () => {
-            resolveCB();
+          getElementObjects(elType.elements).then( (childElements) => {
+
+            childElements.forEach( (child) => {
+              elSchema.properties[child] = {
+                "$ref": "#/properties/" + child
+              };
+            });
+            
+            resolveCB(elSchema);
+
           }).catch( (err) => {
             rejectCB(err);
           });
