@@ -9,7 +9,7 @@ function makeSolrRequest(query) {
   return new Promise((resolve, reject) => {
 
     let options = {
-      hostname: '192.168.99.100',
+      hostname: 'wist-solr',
       port: 8983,
       path: '/solr/dhsniem/select?' + query,
       method: 'GET',
@@ -17,8 +17,6 @@ function makeSolrRequest(query) {
         'Accept': 'application/json'
       }
     };
-
-    // console.log(query);
 
     let req = http.request(options, (res) => {
       res.setEncoding('utf8');
@@ -32,8 +30,7 @@ function makeSolrRequest(query) {
         if (JSON.parse(responseBody).response && JSON.parse(responseBody).response.docs) {
           return resolve(JSON.parse(responseBody).response.docs);
         } else {
-          // return reject('Error processing Solr Request'); 
-          return resolve([]);         
+          return reject('Error processing Solr Request'); 
         }
       });
     });

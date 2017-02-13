@@ -16,7 +16,6 @@ module.exports = function jsonschema(req, res, next) {
     "properties": {}
   };
 
-  // Validate that there are items to export from teh request query parameter
   if (itemsToExport) {
     getElementObjects(itemsToExport).then( () => {
       res.status(200).json(schemaExport);
@@ -27,14 +26,9 @@ module.exports = function jsonschema(req, res, next) {
     res.status(400).json('Must specify items to export.');
   }
 
+
   // For a given list of element names return their full document object and their children as derived from the type. Convert to JSON Schema format.
   function getElementObjects(elements) {
-
-    // Filter out any elements who have already been added to the schema. Prevents infinite recursion caused by circular references in the data. 
-    elements = elements.filter( (element) => {
-      return addedItems.indexOf(element) < 0;
-    });
-    addedItems.push.apply(addedItems, elements);
 
     return makeSolrRequest(buildQueryString(constructOrQuery(elements))).then( (elArr) => {
       // Filter out any elements that are not a part of the business glossary.
@@ -44,15 +38,24 @@ module.exports = function jsonschema(req, res, next) {
 
       return Promise.all(elArr.map( (item) => {
         return new Promise( (resolve, reject) => {
-          generateJSONSchema(item, resolve, reject);
+          // To prevent infinite recursion for circular referenced data. If item already exists in schema, just resolve it to be added a a child reference.
+          if (addedItems.indexOf(item.name) < 0) {
+            addedItems.push(item.name);
+            generateJSONSchema(item, resolve, reject);
+          } else {
+            resolve();
+          }
         }).then( (schema) => {
-          schemaExport.properties[item.name] = schema;
+          if (schema) {
+            schemaExport.properties[item.name] = schema;
+          }
           return item.name;
         });
       }));
 
     });
   }
+
 
   function generateJSONSchema(el, resolveCB, rejectCB) {
     let elSchema = {};
@@ -89,7 +92,6 @@ module.exports = function jsonschema(req, res, next) {
       resolveCB(elSchema);
     }
   }
-
 };
 
 
