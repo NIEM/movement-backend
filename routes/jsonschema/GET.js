@@ -39,52 +39,60 @@ module.exports = function jsonschema(req, res, next) {
       });
 
       return Promise.all(elArr.map( (item) => {
-        return new Promise( (resolve, reject) => {
-          // To prevent infinite recursion for circular referenced data. If item already exists in schema, just resolve it to be added a a child reference.
-          if (addedItems.indexOf(item.name) < 0) {
-            addedItems.push(item.name);
-            generateJSONSchema(item, resolve, reject);
-          } else {
-            resolve();
-          }
-        }).then( (schema) => {
-          if (schema) {
-            schemaExport.properties[item.name] = schema;
-          }
-          return item.name;
-        });
+        if (addedItems.indexOf(item.id) < 0) {
+          addedItems.push(item.id);
+          return generateJSONSchema(item).then( (schema) => {
+            schemaExport.properties[item.id] = schema;
+            return item.id;            
+          });
+        } else {
+          return new Promise( (resolve) => {
+            return resolve(item.id);
+          });
+        }
+
       }));
 
     });
   }
 
 
-  function generateJSONSchema(el, resolveCB, rejectCB) {
+  function generateJSONSchema(el) {
     let elSchema = {};
+    elSchema.namespace = el.namespace;
+    elSchema.namespacePrefix = el.namespacePrefix;
     elSchema.description = el.definition;
 
     if (el.type) {
-      getTypeObject(el.type).then( (elType) => {
+      return getDocById(el.type).then( (elType) => {
+        let requests = [];
+
+        if (elType.parentSimpleType) {
+          requests.push(getDocById(elType.parentSimpleType).then( (simpleTypeDoc) => {
+            if (simpleTypeDoc && simpleTypeDoc.facets) {
+              elSchema.enum = getEnumFromSimpleType(simpleTypeDoc);
+            }
+          }));
+        }
+
         if (elType.elements) {
           elSchema.type = "object";
-          elSchema.properties = {};
-          return getElementObjects(elType.elements);
+          requests.push(getElementObjects(elType.elements).then( (childElements) => {
+            elSchema.properties = setChildReferences(childElements);
+          }));
         } else {
           elSchema.type = elType.name;
-          resolveCB(elSchema);         
         }
-      }).then( (childElements) => {
-        childElements.forEach( (child) => {
-          elSchema.properties[child] = {
-            "$ref": "#/properties/" + child
-          };
-        });
-        resolveCB(elSchema);
-      }).catch( (err) => {
-        rejectCB(err);
+
+        return Promise.all(requests);
+
+      }).then( () => {
+        return elSchema;
       });
     } else {
-      resolveCB(elSchema);
+      return new Promise( (resolve) => {
+        return resolve(elSchema);
+      });
     }
   }
 };
@@ -94,7 +102,6 @@ function constructOrQuery(itemArr) {
   let orQueryString = itemArr.map( (item) => {
     return item.split(':')[0] + '\\:' + item.split(':')[1];
   }).join(' OR ');
-
   return 'id:(' + orQueryString + ')';
 }
 
@@ -107,13 +114,32 @@ function buildQueryString(query) {
 }
 
 
-function getTypeObject(typeName) {
-  let typeQuery = 'name:' + typeName.split(':')[1];
-  return new Promise( (resolve, reject) => {
-    makeSolrRequest(buildQueryString(typeQuery)).then( (solrResponse) => {
-      return resolve(solrResponse[0]);
-    }).catch( (err) => {
-      return reject(err);
-    });
+function getDocById(id) {
+  let idQuery = 'id:' + id.split(':')[0] + '\\:' + id.split(':')[1];
+  return makeSolrRequest(buildQueryString(idQuery)).then( (solrResponse) => {
+    return solrResponse[0];
   });
+}
+
+
+function getEnumFromSimpleType(simpleTypeDoc) {
+  let enumeration;
+  simpleTypeDoc.facets.forEach( (facet) => {
+    if (JSON.parse(facet).enumeration) {
+      enumeration = JSON.parse(facet).enumeration.facetValue;
+      return;
+    }
+  });
+  return enumeration;
+}
+
+
+function setChildReferences(childElements) {
+  let refs = {};
+  childElements.forEach( (child) => {
+    refs[child] = {
+      "$ref": "#/properties/" + child
+    };
+  });
+  return refs;
 }
