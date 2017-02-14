@@ -40,17 +40,15 @@ module.exports = function jsonschema(req, res, next) {
 
       return Promise.all(elArr.map( (item) => {
         return new Promise( (resolve, reject) => {
-          // To prevent infinite recursion for circular referenced data. If item already exists in schema, just resolve it to be added a a child reference.
+          // To prevent infinite recursion for circular referenced data. If item already exists in schema, just resolve it to be added a a child reference as its current value.
           if (addedItems.indexOf(item.name) < 0) {
             addedItems.push(item.name);
             generateJSONSchema(item, resolve, reject);
           } else {
-            resolve();
+            resolve(schemaExport.properties[item.name]);
           }
         }).then( (schema) => {
-          if (schema) {
-            schemaExport.properties[item.name] = schema;
-          }
+          schemaExport.properties[item.name] = schema;
           return item.name;
         });
       }));
@@ -64,22 +62,42 @@ module.exports = function jsonschema(req, res, next) {
     elSchema.description = el.definition;
 
     if (el.type) {
-      getTypeObject(el.type).then( (elType) => {
+      getDocById(el.type).then( (elType) => {
+
+        let requests = [];
+
+        // If the type has a simple type, add the request to fetch it to the promises array
+        if (elType.parentSimpleType) {
+          requests.push(getDocById(elType.parentSimpleType).then( (simpleTypeDoc) => {
+            // elSchema.facets = simpleTypeDoc.facets;
+          }));
+        }
+
         if (elType.elements) {
           elSchema.type = "object";
           elSchema.properties = {};
-          return getElementObjects(elType.elements);
+          requests.push(getElementObjects(elType.elements).then( (childElements) => {
+            childElements.forEach( (child) => {
+              elSchema.properties[child] = {
+                "$ref": "#/properties/" + child
+              };
+            });
+          }));
         } else {
           elSchema.type = elType.name;
-          resolveCB(elSchema);         
         }
-      }).then( (childElements) => {
-        childElements.forEach( (child) => {
-          elSchema.properties[child] = {
-            "$ref": "#/properties/" + child
-          };
+
+        Promise.all(requests).then( () => {
+          resolveCB(elSchema);
         });
-        resolveCB(elSchema);
+
+      // }).then( (childElements) => {
+      //   childElements.forEach( (child) => {
+      //     elSchema.properties[child] = {
+      //       "$ref": "#/properties/" + child
+      //     };
+      //   });
+      //   resolveCB(elSchema);
       }).catch( (err) => {
         rejectCB(err);
       });
@@ -107,13 +125,9 @@ function buildQueryString(query) {
 }
 
 
-function getTypeObject(typeName) {
-  let typeQuery = 'name:' + typeName.split(':')[1];
-  return new Promise( (resolve, reject) => {
-    makeSolrRequest(buildQueryString(typeQuery)).then( (solrResponse) => {
-      return resolve(solrResponse[0]);
-    }).catch( (err) => {
-      return reject(err);
-    });
+function getDocById(id) {
+  let idQuery = 'id:' + id.split(':')[0] + '\\:' + id.split(':')[1];
+  return makeSolrRequest(buildQueryString(idQuery)).then( (solrResponse) => {
+    return solrResponse[0];
   });
 }
