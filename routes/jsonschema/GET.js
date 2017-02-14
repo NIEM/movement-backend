@@ -39,32 +39,32 @@ module.exports = function jsonschema(req, res, next) {
       });
 
       return Promise.all(elArr.map( (item) => {
-        return new Promise( (resolve, reject) => {
-          // To prevent infinite recursion for circular referenced data. If item already exists in schema, just resolve it to be added a a child reference as its current value.
-          if (addedItems.indexOf(item.id) < 0) {
-            addedItems.push(item.id);
-            generateJSONSchema(item, resolve, reject);
-          } else {
-            resolve(schemaExport.properties[item.id]);
-          }
-        }).then( (schema) => {
-          schemaExport.properties[item.id] = schema;
-          return item.id;
-        });
+        if (addedItems.indexOf(item.id) < 0) {
+          addedItems.push(item.id);
+          return generateJSONSchema(item).then( (schema) => {
+            schemaExport.properties[item.id] = schema;
+            return item.id;            
+          });
+        } else {
+          return new Promise( (resolve) => {
+            return resolve(item.id);
+          });
+        }
+
       }));
 
     });
   }
 
 
-  function generateJSONSchema(el, resolveCB, rejectCB) {
+  function generateJSONSchema(el) {
     let elSchema = {};
     elSchema.namespace = el.namespace;
     elSchema.namespacePrefix = el.namespacePrefix;
     elSchema.description = el.definition;
 
     if (el.type) {
-      getDocById(el.type).then( (elType) => {
+      return getDocById(el.type).then( (elType) => {
         let requests = [];
 
         if (elType.parentSimpleType) {
@@ -87,12 +87,12 @@ module.exports = function jsonschema(req, res, next) {
         return Promise.all(requests);
 
       }).then( () => {
-        resolveCB(elSchema);
-      }).catch( (err) => {
-        rejectCB(err);
+        return elSchema;
       });
     } else {
-      resolveCB(elSchema);
+      return new Promise( (resolve) => {
+        return resolve(elSchema);
+      });
     }
   }
 };
