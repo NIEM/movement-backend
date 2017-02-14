@@ -68,36 +68,24 @@ module.exports = function jsonschema(req, res, next) {
         if (elType.parentSimpleType) {
           requests.push(getDocById(elType.parentSimpleType).then( (simpleTypeDoc) => {
             if (simpleTypeDoc && simpleTypeDoc.facets) {
-              simpleTypeDoc.facets.forEach( (facet) => {
-                if (JSON.parse(facet).enumeration) {
-                  elSchema.enum = JSON.parse(facet).enumeration.facetValue;
-                  return;
-                }
-              });
+              elSchema.enum = getEnumFromSimpleType(simpleTypeDoc);
             }
           }));
         }
 
         if (elType.elements) {
           elSchema.type = "object";
-          elSchema.properties = {};
           requests.push(getElementObjects(elType.elements).then( (childElements) => {
-            childElements.forEach( (child) => {
-              elSchema.properties[child] = {
-                "$ref": "#/properties/" + child
-              };
-            });
+            elSchema.properties = setChildReferences(childElements);
           }));
         } else {
           elSchema.type = elType.name;
         }
 
-        Promise.all(requests).then( () => {
-          resolveCB(elSchema);
-        }).catch( (err) => {
-          rejectCB(err);
-        });
+        return Promise.all(requests);
 
+      }).then( () => {
+        resolveCB(elSchema);
       }).catch( (err) => {
         rejectCB(err);
       });
@@ -129,4 +117,25 @@ function getDocById(id) {
   return makeSolrRequest(buildQueryString(idQuery)).then( (solrResponse) => {
     return solrResponse[0];
   });
+}
+
+
+function getEnumFromSimpleType(simpleTypeDoc) {
+  simpleTypeDoc.facets.forEach( (facet) => {
+    if (JSON.parse(facet).enumeration) {
+      return JSON.parse(facet).enumeration.facetValue;
+    }
+  });
+  return;  
+}
+
+
+function setChildReferences(childElements) {
+  let refs = {};
+  childElements.forEach( (child) => {
+    refs[child] = {
+      "$ref": "#/properties/" + child
+    };
+  });
+  return refs;
 }
