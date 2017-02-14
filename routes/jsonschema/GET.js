@@ -59,6 +59,7 @@ module.exports = function jsonschema(req, res, next) {
 
   function generateJSONSchema(el) {
     let elSchema = {};
+    let properties;
     elSchema.namespace = el.namespace;
     elSchema.namespacePrefix = el.namespacePrefix;
     elSchema.description = el.definition;
@@ -75,10 +76,17 @@ module.exports = function jsonschema(req, res, next) {
           }));
         }
 
+        if (elType.parentTypeName) {
+          requests.push(getDocById(elType.parentTypeName).then( (parentTypeDoc) => {
+            elSchema.allOf = [{"$ref": "#/properties/" + parentTypeDoc.id}];
+            return getElementObjects([parentTypeDoc.id]);
+          }));
+        }
+
         if (elType.elements) {
           elSchema.type = "object";
           requests.push(getElementObjects(elType.elements).then( (childElements) => {
-            elSchema.properties = setChildReferences(childElements);
+            properties = setChildReferences(childElements);
           }));
         } else {
           elSchema.type = elType.name;
@@ -87,6 +95,11 @@ module.exports = function jsonschema(req, res, next) {
         return Promise.all(requests);
 
       }).then( () => {
+        if (elSchema.allOf) {
+          elSchema.allOf.push({"properties": properties});
+        } else if (properties) {
+          elSchema.properties = properties;
+        }
         return elSchema;
       });
     } else {
