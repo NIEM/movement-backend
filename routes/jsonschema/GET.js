@@ -18,8 +18,8 @@ module.exports = function jsonschema(req, res, next) {
 
   if (itemsToExport) {
     getElementObjects(itemsToExport).then( () => {
-      res.set('Content-Type', 'application/json; charset=utf-8');
-      res.set('Content-Disposition', 'attachment;filename=data.json');
+      // res.set('Content-Type', 'application/json; charset=utf-8');
+      // res.set('Content-Disposition', 'attachment;filename=data.json');
       res.status(200).send(JSON.stringify(schemaExport, null, 2));
     }).catch( (err) => {
       res.status(400).json('Error processing JSON Schema request: ', err);
@@ -63,13 +63,18 @@ module.exports = function jsonschema(req, res, next) {
 
     if (el.type) {
       getDocById(el.type).then( (elType) => {
-
         let requests = [];
 
-        // If the type has a simple type, add the request to fetch it to the promises array
         if (elType.parentSimpleType) {
           requests.push(getDocById(elType.parentSimpleType).then( (simpleTypeDoc) => {
-            // elSchema.facets = simpleTypeDoc.facets;
+            if (simpleTypeDoc && simpleTypeDoc.facets) {
+              simpleTypeDoc.facets.forEach( (facet) => {
+                if (JSON.parse(facet).enumeration) {
+                  elSchema.enum = JSON.parse(facet).enumeration.facetValue;
+                  return;
+                }
+              });
+            }
           }));
         }
 
@@ -89,15 +94,10 @@ module.exports = function jsonschema(req, res, next) {
 
         Promise.all(requests).then( () => {
           resolveCB(elSchema);
+        }).catch( (err) => {
+          rejectCB(err);
         });
 
-      // }).then( (childElements) => {
-      //   childElements.forEach( (child) => {
-      //     elSchema.properties[child] = {
-      //       "$ref": "#/properties/" + child
-      //     };
-      //   });
-      //   resolveCB(elSchema);
       }).catch( (err) => {
         rejectCB(err);
       });
@@ -112,7 +112,6 @@ function constructOrQuery(itemArr) {
   let orQueryString = itemArr.map( (item) => {
     return item.split(':')[0] + '\\:' + item.split(':')[1];
   }).join(' OR ');
-
   return 'id:(' + orQueryString + ')';
 }
 
