@@ -41,15 +41,15 @@ module.exports = function jsonschema(req, res, next) {
       return Promise.all(elArr.map( (item) => {
         return new Promise( (resolve, reject) => {
           // To prevent infinite recursion for circular referenced data. If item already exists in schema, just resolve it to be added a a child reference as its current value.
-          if (addedItems.indexOf(item.name) < 0) {
-            addedItems.push(item.name);
+          if (addedItems.indexOf(item.id) < 0) {
+            addedItems.push(item.id);
             generateJSONSchema(item, resolve, reject);
           } else {
-            resolve(schemaExport.properties[item.name]);
+            resolve(schemaExport.properties[item.id]);
           }
         }).then( (schema) => {
-          schemaExport.properties[item.name] = schema;
-          return item.name;
+          schemaExport.properties[item.id] = schema;
+          return item.id;
         });
       }));
 
@@ -59,6 +59,8 @@ module.exports = function jsonschema(req, res, next) {
 
   function generateJSONSchema(el, resolveCB, rejectCB) {
     let elSchema = {};
+    elSchema.namespace = el.namespace;
+    elSchema.namespacePrefix = el.namespacePrefix;
     elSchema.description = el.definition;
 
     if (el.type) {
@@ -121,12 +123,14 @@ function getDocById(id) {
 
 
 function getEnumFromSimpleType(simpleTypeDoc) {
+  let enumeration;
   simpleTypeDoc.facets.forEach( (facet) => {
     if (JSON.parse(facet).enumeration) {
-      return JSON.parse(facet).enumeration.facetValue;
+      enumeration = JSON.parse(facet).enumeration.facetValue;
+      return;
     }
   });
-  return;  
+  return enumeration;
 }
 
 
