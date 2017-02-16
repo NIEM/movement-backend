@@ -18,8 +18,8 @@ module.exports = function jsonschema(req, res, next) {
 
   if (itemsToExport) {
     getElementObjects(itemsToExport).then( () => {
-      // res.set('Content-Type', 'application/json; charset=utf-8');
-      // res.set('Content-Disposition', 'attachment;filename=data.json');
+      res.set('Content-Type', 'application/json; charset=utf-8');
+      res.set('Content-Disposition', 'attachment;filename=data.json');
       res.status(200).send(JSON.stringify(schemaExport, null, 2));
     }).catch( (err) => {
       res.status(400).json('Error processing JSON Schema request: ' + err);
@@ -76,15 +76,8 @@ module.exports = function jsonschema(req, res, next) {
 
         if (elType.parentTypeName) {
           requests.push(getDocById(elType.parentTypeName).then( (parentTypeDoc) => {
-            // console.log(parentTypeDoc.name + ' XX ' + parentTypeDoc.elements);
-            // return parentTypeDoc.elements ? parentTypeDoc.elements : []; // probably can either delete this ternary or if statement in next then
-            return parentTypeDoc.elements;
-          // }));
-          }).then( (elements) => {
-            if (elements) {
-              console.log(elements);
-              return getElementObjects(elements).then( (childElements) => {
-                // elSchema.allOf = setInheritanceReferences(childElements);
+            if (parentTypeDoc.elements) {
+              return getElementObjects(parentTypeDoc.elements).then( (childElements) => {
                 elSchema.allOf = [{"properties": setChildReferences(childElements)}];
               });
             }
@@ -161,13 +154,6 @@ function setChildReferences(childElements) {
     refs[child] = createReference(child);
   });
   return refs;
-}
-
-
-function setInheritanceReferences(inheritedElements) {
-  return inheritedElements.map( (element) => {
-    return createReference(element);
-  });
 }
 
 
