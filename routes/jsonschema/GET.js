@@ -22,7 +22,7 @@ module.exports = function jsonschema(req, res, next) {
       res.set('Content-Disposition', 'attachment;filename=data.json');
       res.status(200).send(JSON.stringify(schemaExport, null, 2));
     }).catch( (err) => {
-      res.status(400).json('Error processing JSON Schema request: ', err);
+      res.status(400).json('Error processing JSON Schema request: ' + err);
     });
   } else {
     res.status(400).json('Must specify items to export.');
@@ -46,9 +46,7 @@ module.exports = function jsonschema(req, res, next) {
             return item.id;            
           });
         } else {
-          return new Promise( (resolve) => {
-            return resolve(item.id);
-          });
+          return item.id;
         }
 
       }));
@@ -76,12 +74,18 @@ module.exports = function jsonschema(req, res, next) {
           }));
         }
 
-        if (elType.parentTypeName) {
-          requests.push(getDocById(elType.parentTypeName).then( (parentTypeDoc) => {
-            elSchema.allOf = [{"$ref": "#/properties/" + parentTypeDoc.id}];
-            return getElementObjects([parentTypeDoc.id]);
-          }));
-        }
+        // if (elType.parentTypeName) {
+        //   requests.push(getDocById(elType.parentTypeName).then( (parentTypeDoc) => {
+        //     return parentTypeDoc.elements ? parentTypeDoc.elements : [];
+        //   }).then( (elements) => {
+        //     if (elements) {
+        //       console.log(elements);
+        //       return getElementObjects(elements).then( (childElements) => {
+        //         elSchema.allOf = setInheritanceReferences(childElements);
+        //       });
+        //     }
+        //   }));
+        // }
 
         if (elType.elements) {
           elSchema.type = "object";
@@ -103,6 +107,7 @@ module.exports = function jsonschema(req, res, next) {
         return elSchema;
       });
     } else {
+      // return elSchema;
       return new Promise( (resolve) => {
         return resolve(elSchema);
       });
@@ -150,9 +155,23 @@ function getEnumFromSimpleType(simpleTypeDoc) {
 function setChildReferences(childElements) {
   let refs = {};
   childElements.forEach( (child) => {
-    refs[child] = {
-      "$ref": "#/properties/" + child
-    };
+    refs[child] = createReference(child);
   });
   return refs;
+}
+
+
+function setInheritanceReferences(elements) {
+  let allOf = [];
+  elements.forEach( (element) => {
+    allOf.push(createReference(element));
+  });
+  return allOf;
+}
+
+
+function createReference(element) {
+  return {
+    "$ref": "#/properties/" + element
+  };
 }
