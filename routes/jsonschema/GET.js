@@ -80,6 +80,8 @@ module.exports = function jsonschema(req, res, next) {
       requests.push(getDocById(typeDoc.parentTypeName).then( (parentTypeDoc) => {
         typeSchema.allOf = [createReference(parentTypeDoc.id)];
         return generateTypeSchema(parentTypeDoc);
+      }).then( (parentTypeSchema) => {
+        schemaExport.properties[typeDoc.parentTypeName] = parentTypeSchema; // would be nice to move this to the returned promise all
       }));
     }
 
