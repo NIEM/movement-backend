@@ -18,8 +18,8 @@ module.exports = function jsonschema(req, res, next) {
 
   if (itemsToExport) {
     getElementObjects(itemsToExport).then( () => {
-      // res.set('Content-Type', 'application/json; charset=utf-8');
-      // res.set('Content-Disposition', 'attachment;filename=data.json');
+      res.set('Content-Type', 'application/json; charset=utf-8');
+      res.set('Content-Disposition', 'attachment;filename=data.json');
       res.status(200).send(JSON.stringify(schemaExport, null, 2));
     }).catch( (err) => {
       res.status(400).json('Error processing JSON Schema request: ' + err);
@@ -32,52 +32,34 @@ module.exports = function jsonschema(req, res, next) {
   // For a given list of element names return their full document object and their children as derived from the type. Convert to JSON Schema format.
   function getElementObjects(elements) {
 
-    return makeSolrRequest(buildQueryString(constructOrQuery(elements))).then( (elArr) => {
+    return makeSolrRequest(buildQueryString(constructOrQuery(elements))).then( (elementDocs) => {
       // Filter out any elements that are not a part of the business glossary.
-      elArr = elArr.filter( (elArrItem) => {
-        return elArrItem.isBG;
+      elementDocs = elementDocs.filter( (elementDoc) => {
+        return elementDoc.isBG;
       });
 
-      return Promise.all(elArr.map( (item) => {
-        if (addedItems.indexOf(item.id) < 0) {
-          addedItems.push(item.id);
-          return generateElementSchema(item).then( (typeSchema) => {
-            if (typeSchema) {
-              schemaExport.properties[typeSchema.id] = typeSchema.schema;
-            }
-            return item.id;            
+      return Promise.all(elementDocs.map( (elementDoc) => {
+
+        if (elementDoc.type && addedItems.indexOf(elementDoc.type) < 0) {
+          addedItems.push(elementDoc.id, elementDoc.type);
+          schemaExport.properties[elementDoc.id] = generateElementSchema(elementDoc);
+          return getDocById(elementDoc.type).then( (typeDoc) => {
+            return generateTypeSchema(typeDoc);
+          }).then( (typeSchema) => {
+            schemaExport.properties[elementDoc.type] = typeSchema;
+            return elementDoc.id;
           });
+        } else if (addedItems.indexOf(elementDoc.id) < 0) {
+          addedItems.push(elementDoc.id);
+          schemaExport.properties[elementDoc.id] = generateElementSchema(elementDoc);
+          return elementDoc.id;
         } else {
-          return item.id;
+          return elementDoc.id;
         }
 
       }));
 
     });
-  }
-
-
-  function generateElementSchema(elementDoc) {
-    let elSchema = getBasicAttributes(elementDoc);
-
-    if (addedItems.indexOf(elementDoc.type) > 0 && elementDoc.type) {
-      elSchema.allOf = [createReference(elementDoc.type)];
-      schemaExport.properties[elementDoc.id] = elSchema;
-      return new Promise( (resolve) => {
-        return resolve();
-      });
-    }
-    else if (elementDoc.type) {
-      elSchema.allOf = [createReference(elementDoc.type)];
-      schemaExport.properties[elementDoc.id] = elSchema;
-      return getDocById(elementDoc.type).then( (typeDoc) => {
-        return generateTypeSchema(typeDoc);
-      });
-    } else {
-      return new Promise( (resolve) => {
-        return resolve();
-      });
-    }
   }
 
 
@@ -116,10 +98,8 @@ module.exports = function jsonschema(req, res, next) {
       } else if (properties) {
         typeSchema.properties = properties;
       }
-      return {
-        'id': typeDoc.id,
-        'schema': typeSchema
-      };
+
+      return typeSchema;
     });
   }
 
@@ -177,10 +157,20 @@ function createReference(entity) {
   };
 }
 
+
 function getBasicAttributes(entity) {
   return {
     namespace: entity.namespace,
     namespacePrefix: entity.namespacePrefix,
     description: entity.definition    
   };
+}
+
+
+function generateElementSchema(elementDoc) {
+  let elSchema = getBasicAttributes(elementDoc);
+  if (elementDoc.type) {
+    elSchema.allOf = [createReference(elementDoc.type)];
+  }
+  return elSchema;
 }
