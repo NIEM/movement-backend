@@ -22,7 +22,7 @@ module.exports = function jsonschema(req, res, next) {
       res.set('Content-Disposition', 'attachment;filename=data.json');
       res.status(200).send(JSON.stringify(schemaExport, null, 2));
     }).catch( (err) => {
-      res.status(400).json('Error processing JSON Schema request: ', err);
+      res.status(400).json('Error processing JSON Schema request: ' + err);
     });
   } else {
     res.status(400).json('Must specify items to export.');
@@ -32,23 +32,35 @@ module.exports = function jsonschema(req, res, next) {
   // For a given list of element names return their full document object and their children as derived from the type. Convert to JSON Schema format.
   function getElementObjects(elements) {
 
-    return makeSolrRequest(buildQueryString(constructOrQuery(elements))).then( (elArr) => {
+    return makeSolrRequest(buildQueryString(constructOrQuery(elements))).then( (elementDocs) => {
       // Filter out any elements that are not a part of the business glossary.
-      elArr = elArr.filter( (elArrItem) => {
-        return elArrItem.isBG;
+      elementDocs = elementDocs.filter( (elementDoc) => {
+        return elementDoc.isBG;
       });
 
-      return Promise.all(elArr.map( (item) => {
-        if (addedItems.indexOf(item.id) < 0) {
-          addedItems.push(item.id);
-          return generateJSONSchema(item).then( (schema) => {
-            schemaExport.properties[item.id] = schema;
-            return item.id;            
+      return Promise.all(elementDocs.map( (elementDoc) => {
+
+        if (elementDoc.type && addedItems.indexOf(elementDoc.type) < 0) {
+          addedItems.push(elementDoc.id, elementDoc.type);
+          schemaExport.properties[elementDoc.id] = generateElementSchema(elementDoc);
+          return getDocById(elementDoc.type).then( (typeDoc) => {
+            return generateTypeSchema(typeDoc);
+          }).then( (typeSchema) => {
+            schemaExport.properties[elementDoc.type] = typeSchema;
+            return elementDoc.id;
           });
+
+        } else if (addedItems.indexOf(elementDoc.id) < 0) {
+          addedItems.push(elementDoc.id);
+          schemaExport.properties[elementDoc.id] = generateElementSchema(elementDoc);
+          return getSubstitutionGroups(elementDoc.id).then( (subGroupsRefs) => {
+            schemaExport.properties[elementDoc.id].anyOf = subGroupsRefs;
+          }).then( () => {
+            return elementDoc.id;
+          });
+
         } else {
-          return new Promise( (resolve) => {
-            return resolve(item.id);
-          });
+          return elementDoc.id;
         }
 
       }));
@@ -57,44 +69,65 @@ module.exports = function jsonschema(req, res, next) {
   }
 
 
-  function generateJSONSchema(el) {
-    let elSchema = {};
-    elSchema.namespace = el.namespace;
-    elSchema.namespacePrefix = el.namespacePrefix;
-    elSchema.description = el.definition;
+  function generateTypeSchema(typeDoc) {
+    let typeSchema = getBasicAttributes(typeDoc);
+    let properties;
+    let requests = [];
 
-    if (el.type) {
-      return getDocById(el.type).then( (elType) => {
-        let requests = [];
-
-        if (elType.parentSimpleType) {
-          requests.push(getDocById(elType.parentSimpleType).then( (simpleTypeDoc) => {
-            if (simpleTypeDoc && simpleTypeDoc.facets) {
-              elSchema.enum = getEnumFromSimpleType(simpleTypeDoc);
-            }
-          }));
+    if (typeDoc.parentSimpleType) {
+      requests.push(getDocById(typeDoc.parentSimpleType).then( (simpleTypeDoc) => {
+        if (simpleTypeDoc && simpleTypeDoc.facets) {
+          typeSchema.enum = getEnumFromSimpleType(simpleTypeDoc);
         }
-
-        if (elType.elements) {
-          elSchema.type = "object";
-          requests.push(getElementObjects(elType.elements).then( (childElements) => {
-            elSchema.properties = setChildReferences(childElements);
-          }));
-        } else {
-          elSchema.type = elType.name;
-        }
-
-        return Promise.all(requests);
-
-      }).then( () => {
-        return elSchema;
-      });
-    } else {
-      return new Promise( (resolve) => {
-        return resolve(elSchema);
-      });
+      }));
     }
+
+    if (typeDoc.parentTypeName) {
+      requests.push(getDocById(typeDoc.parentTypeName).then( (parentTypeDoc) => {
+        typeSchema.allOf = [createReference(parentTypeDoc.id)];
+        return generateTypeSchema(parentTypeDoc);
+      }).then( (parentTypeSchema) => {
+        schemaExport.properties[typeDoc.parentTypeName] = parentTypeSchema;
+      }));
+    }
+
+    if (typeDoc.elements) {
+      typeSchema.type = "object";
+      requests.push(getElementObjects(typeDoc.elements).then( (childElements) => {
+        properties = setRefsInObject(childElements);
+      }));
+    } else {
+      typeSchema.type = typeDoc.name;
+    }
+
+    return Promise.all(requests).then( () => {
+      if (typeSchema.allOf) {
+        typeSchema.allOf.push({"properties": properties});
+      } else if (properties) {
+        typeSchema.properties = properties;
+      }
+
+      return typeSchema;
+    });
   }
+
+
+  function getSubstitutionGroups(elementId) {
+    let sgQuery = 'substitutionGroup:' + elementId.split(':')[0] + '\\:' + elementId.split(':')[1];
+    return makeSolrRequest(buildQueryString(sgQuery)).then( (subGroups) => {
+      if (subGroups) {
+        return getElementObjects(subGroups.map( (subGroupElement) => {
+          return subGroupElement.id;
+        })).then( (subGroupElements) => {
+          console.log(subGroupElements);
+          return setRefsInArray(subGroupElements);
+        });
+      }
+    }).catch( (err) => {
+      return;
+    });  
+  }
+
 };
 
 
@@ -134,12 +167,44 @@ function getEnumFromSimpleType(simpleTypeDoc) {
 }
 
 
-function setChildReferences(childElements) {
+function setRefsInObject(elements) {
   let refs = {};
-  childElements.forEach( (child) => {
-    refs[child] = {
-      "$ref": "#/properties/" + child
-    };
+  elements.forEach( (el) => {
+    refs[el] = createReference(el);
   });
   return refs;
+}
+
+
+function setRefsInArray(elements) {
+  let refs = [];
+  elements.forEach( (el) => {
+    refs.push(createReference(el));
+  });
+  return refs;
+}
+
+
+function createReference(entity) {
+  return {
+    "$ref": "#/properties/" + entity
+  };
+}
+
+
+function getBasicAttributes(entity) {
+  return {
+    namespace: entity.namespace,
+    namespacePrefix: entity.namespacePrefix,
+    description: entity.definition    
+  };
+}
+
+
+function generateElementSchema(elementDoc) {
+  let elSchema = getBasicAttributes(elementDoc);
+  if (elementDoc.type) {
+    elSchema.$ref = "#/properties/" + elementDoc.type;
+  }
+  return elSchema;
 }
