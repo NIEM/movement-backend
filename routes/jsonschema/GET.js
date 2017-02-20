@@ -18,8 +18,8 @@ module.exports = function jsonschema(req, res, next) {
 
   if (itemsToExport) {
     getElementObjects(itemsToExport).then( () => {
-      // res.set('Content-Type', 'application/json; charset=utf-8');
-      // res.set('Content-Disposition', 'attachment;filename=data.json');
+      res.set('Content-Type', 'application/json; charset=utf-8');
+      res.set('Content-Disposition', 'attachment;filename=data.json');
       res.status(200).send(JSON.stringify(schemaExport, null, 2));
     }).catch( (err) => {
       res.status(400).json('Error processing JSON Schema request: ' + err);
@@ -49,10 +49,16 @@ module.exports = function jsonschema(req, res, next) {
             schemaExport.properties[elementDoc.type] = typeSchema;
             return elementDoc.id;
           });
+
         } else if (addedItems.indexOf(elementDoc.id) < 0) {
           addedItems.push(elementDoc.id);
           schemaExport.properties[elementDoc.id] = generateElementSchema(elementDoc);
-          return elementDoc.id;
+          return getSubstitutionGroups(elementDoc.id).then( (subGroupsRefs) => {
+            schemaExport.properties[elementDoc.id].anyOf = subGroupsRefs;
+          }).then( () => {
+            return elementDoc.id;
+          });
+
         } else {
           return elementDoc.id;
         }
@@ -81,14 +87,14 @@ module.exports = function jsonschema(req, res, next) {
         typeSchema.allOf = [createReference(parentTypeDoc.id)];
         return generateTypeSchema(parentTypeDoc);
       }).then( (parentTypeSchema) => {
-        schemaExport.properties[typeDoc.parentTypeName] = parentTypeSchema; // would be nice to move this to the returned promise all
+        schemaExport.properties[typeDoc.parentTypeName] = parentTypeSchema;
       }));
     }
 
     if (typeDoc.elements) {
       typeSchema.type = "object";
       requests.push(getElementObjects(typeDoc.elements).then( (childElements) => {
-        properties = setChildReferences(childElements);
+        properties = setRefsInObject(childElements);
       }));
     } else {
       typeSchema.type = typeDoc.name;
@@ -103,6 +109,23 @@ module.exports = function jsonschema(req, res, next) {
 
       return typeSchema;
     });
+  }
+
+
+  function getSubstitutionGroups(elementId) {
+    let sgQuery = 'substitutionGroup:' + elementId.split(':')[0] + '\\:' + elementId.split(':')[1];
+    return makeSolrRequest(buildQueryString(sgQuery)).then( (subGroups) => {
+      if (subGroups) {
+        return getElementObjects(subGroups.map( (subGroupElement) => {
+          return subGroupElement.id;
+        })).then( (subGroupElements) => {
+          console.log(subGroupElements);
+          return setRefsInArray(subGroupElements);
+        });
+      }
+    }).catch( (err) => {
+      return;
+    });  
   }
 
 };
@@ -144,10 +167,19 @@ function getEnumFromSimpleType(simpleTypeDoc) {
 }
 
 
-function setChildReferences(childElements) {
+function setRefsInObject(elements) {
   let refs = {};
-  childElements.forEach( (child) => {
-    refs[child] = createReference(child);
+  elements.forEach( (el) => {
+    refs[el] = createReference(el);
+  });
+  return refs;
+}
+
+
+function setRefsInArray(elements) {
+  let refs = [];
+  elements.forEach( (el) => {
+    refs.push(createReference(el));
   });
   return refs;
 }
