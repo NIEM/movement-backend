@@ -119,7 +119,6 @@ module.exports = function jsonschema(req, res, next) {
         return getElementObjects(subGroups.map( (subGroupElement) => {
           return subGroupElement.id;
         })).then( (subGroupElements) => {
-          console.log(subGroupElements);
           return setRefsInArray(subGroupElements);
         });
       }
