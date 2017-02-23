@@ -140,8 +140,7 @@ function constructOrQuery(itemArr) {
 
 function buildQueryString(query) {
   return querystring.stringify({
-    'q': query,
-    'wt': 'json'
+    'q': query
   });
 }
 
