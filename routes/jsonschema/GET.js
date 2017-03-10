@@ -1,6 +1,7 @@
 'use strict';
 const makeSolrRequest = require('../../middleware/solrRequest');
 const querystring = require('querystring');
+const jsonTypeMapping = require('../../components/jsonTypeMapping');
 
 /**
  * Route handler for Express
@@ -73,6 +74,7 @@ module.exports = function jsonschema(req, res, next) {
     let typeSchema = getBasicAttributes(typeDoc);
     let properties;
     let requests = [];
+    Object.assign(typeSchema, getType(typeDoc));
 
     if (typeDoc.parentSimpleType) {
       requests.push(getDocById(typeDoc.parentSimpleType).then( (simpleTypeDoc) => {
@@ -92,12 +94,9 @@ module.exports = function jsonschema(req, res, next) {
     }
 
     if (typeDoc.elements) {
-      typeSchema.type = "object";
       requests.push(getElementObjects(typeDoc.elements).then( (childElements) => {
         properties = setRefsInObject(childElements);
       }));
-    } else {
-      typeSchema.type = typeDoc.name;
     }
 
     return Promise.all(requests).then( () => {
@@ -119,7 +118,6 @@ module.exports = function jsonschema(req, res, next) {
         return getElementObjects(subGroups.map( (subGroupElement) => {
           return subGroupElement.id;
         })).then( (subGroupElements) => {
-          console.log(subGroupElements);
           return setRefsInArray(subGroupElements);
         });
       }
@@ -141,8 +139,7 @@ function constructOrQuery(itemArr) {
 
 function buildQueryString(query) {
   return querystring.stringify({
-    'q': query,
-    'wt': 'json'
+    'q': query
   });
 }
 
@@ -198,6 +195,17 @@ function getBasicAttributes(entity) {
     namespacePrefix: entity.namespacePrefix,
     description: entity.definition    
   };
+}
+
+
+function getType(typeDoc) {
+  if (jsonTypeMapping[typeDoc.id]) {
+    return jsonTypeMapping[typeDoc.id];
+  } else if (typeDoc.elements) {
+    return {'type': 'object'};
+  } else {
+    return '';
+  }
 }
 
 
