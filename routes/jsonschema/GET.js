@@ -201,8 +201,6 @@ function getBasicAttributes(entity) {
 function getType(typeDoc) {
   if (jsonTypeMapping[typeDoc.id]) {
     return jsonTypeMapping[typeDoc.id];
-  } else if (typeDoc.elements) {
-    return {'type': 'object'};
   } else {
     return '';
   }
