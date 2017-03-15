@@ -41,7 +41,7 @@ module.exports = function jsonschema(req, res, next) {
 
       return Promise.all(elementDocs.map( (elementDoc) => {
 
-        if (elementDoc.type && addedItems.indexOf(elementDoc.type) < 0) {
+        if (elementDoc.type && !jsonTypeMapping[elementDoc.type] && addedItems.indexOf(elementDoc.type) < 0) {
           addedItems.push(elementDoc.id, elementDoc.type);
           schemaExport.properties[elementDoc.id] = generateElementSchema(elementDoc);
           return getDocById(elementDoc.type).then( (typeDoc) => {
@@ -74,7 +74,6 @@ module.exports = function jsonschema(req, res, next) {
     let typeSchema = getBasicAttributes(typeDoc);
     let properties;
     let requests = [];
-    Object.assign(typeSchema, getType(typeDoc));
 
     if (typeDoc.parentSimpleType) {
       requests.push(getDocById(typeDoc.parentSimpleType).then( (simpleTypeDoc) => {
@@ -198,19 +197,12 @@ function getBasicAttributes(entity) {
 }
 
 
-function getType(typeDoc) {
-  if (jsonTypeMapping[typeDoc.id]) {
-    return jsonTypeMapping[typeDoc.id];
-  } else {
-    return '';
-  }
-}
-
-
 function generateElementSchema(elementDoc) {
   let elSchema = getBasicAttributes(elementDoc);
-  if (elementDoc.type) {
+  if (elementDoc.type && !jsonTypeMapping[elementDoc.type]) {
     elSchema.$ref = "#/properties/" + elementDoc.type;
+  } else if (jsonTypeMapping[elementDoc.type]) {
+    Object.assign(elSchema, jsonTypeMapping[elementDoc.type]);
   }
   return elSchema;
 }
