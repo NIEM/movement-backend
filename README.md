@@ -11,7 +11,7 @@ docker network create niem-network
 docker run -dti -p 27017:27017 --name wist-mongo --net niem-network
 ```
 
-Then build and run the backend container, from the repo's root directory:
+Note: Also build and run the Solr container. Then build and run the backend container, from the repo's root directory:
 ```
 docker build -t wist-backend .
 docker run -dti -p 7000:7000 --name wist-backend --net niem-network wist-backend
