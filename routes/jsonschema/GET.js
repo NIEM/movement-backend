@@ -76,20 +76,11 @@ module.exports = function jsonschema(req, res, next) {
     let requests = [];
 
     if (typeDoc.parentSimpleType) {
-      requests.push(getDocById(typeDoc.parentSimpleType).then( (simpleTypeDoc) => {
-        if (simpleTypeDoc && simpleTypeDoc.facets) {
-          typeSchema.enum = getEnumFromSimpleType(simpleTypeDoc);
-        }
-      }));
+      getParentType(typeDoc.parentSimpleType);
     }
 
     if (typeDoc.parentTypeName) {
-      requests.push(getDocById(typeDoc.parentTypeName).then( (parentTypeDoc) => {
-        typeSchema.allOf = [createReference(parentTypeDoc.id)];
-        return generateTypeSchema(parentTypeDoc);
-      }).then( (parentTypeSchema) => {
-        schemaExport.properties[typeDoc.parentTypeName] = parentTypeSchema;
-      }));
+      getParentType(typeDoc.parentTypeName);
     }
 
     if (typeDoc.elements) {
@@ -98,15 +89,34 @@ module.exports = function jsonschema(req, res, next) {
       }));
     }
 
+    if (typeDoc.facets) {
+      typeSchema.enum = getEnumFromSimpleType(typeDoc);
+    }
+
     return Promise.all(requests).then( () => {
-      if (typeSchema.allOf) {
+      if (typeSchema.allOf && properties) {
         typeSchema.allOf.push({"properties": properties});
-      } else if (properties) {
+      } else if (properties && Object.keys(properties).length) {
         typeSchema.properties = properties;
       }
 
       return typeSchema;
     });
+
+    function getParentType(parentTypeId) {
+      if (jsonTypeMapping[parentTypeId]) {
+        Object.assign(typeSchema, jsonTypeMapping[parentTypeId]);
+      } else {
+        requests.push(getDocById(parentTypeId).then( (parentTypeDoc) => {
+          if (parentTypeDoc) {
+            typeSchema.allOf = [createReference(parentTypeDoc.id)];
+            return generateTypeSchema(parentTypeDoc);
+          }
+        }).then( (parentTypeSchema) => {
+          schemaExport.properties[parentTypeId] = parentTypeSchema;
+        }));      
+      }
+    }
   }
 
 
@@ -199,10 +209,12 @@ function getBasicAttributes(entity) {
 
 function generateElementSchema(elementDoc) {
   let elSchema = getBasicAttributes(elementDoc);
-  if (elementDoc.type && !jsonTypeMapping[elementDoc.type]) {
-    elSchema.$ref = "#/properties/" + elementDoc.type;
-  } else if (jsonTypeMapping[elementDoc.type]) {
-    Object.assign(elSchema, jsonTypeMapping[elementDoc.type]);
+  if (elementDoc.type) {
+    if (jsonTypeMapping[elementDoc.type]) {
+      Object.assign(elSchema, jsonTypeMapping[elementDoc.type]);
+    } else {
+      elSchema.$ref = "#/properties/" + elementDoc.type;
+    }
   }
   return elSchema;
 }
