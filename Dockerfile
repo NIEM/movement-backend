@@ -1,5 +1,5 @@
 FROM node:boron
-MAINTAINER Sam Rubin "srubin@deloitte.com"
+MAINTAINER Sam Rubin "smrubin"
 
 # Set npm log level override
 ENV NPM_CONFIG_LOGLEVEL warn
