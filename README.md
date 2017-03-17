@@ -3,23 +3,19 @@ NIEM - WIST: Backend
 
 The other repositories include the [WIST - Webapp](https://github.com/NIEMconnects/wist-frontend) and the [WIST - Solr](https://github.com/NIEMconnects/wist-solr).
 
-# Backend Setup
+# Running the App with Docker
 
-Backend is run via Docker. To run the node app locally with Docker:
+The backend can be run via Docker. To run the node app locally with Docker, first make sure you have installed and setup the NIEM WIST Docker config:
+```
+docker network create niem-network
+docker run -dti -p 27017:27017 --name wist-mongo --net niem-network
+```
 
+Note: Also build and run the Solr container. Then build and run the backend container, from the repo's root directory:
 ```
 docker build -t wist-backend .
-docker run -d -p 7000:7000 -t wist-backend
+docker run -dti -p 7000:7000 --name wist-backend --net niem-network wist-backend
 ```
-
-# Jenkins Job Setup 
-
-```
-#!bin/bash
-chmod u+x deploy.sh
-./deploy.sh
-```
-
 
 # Node App Features
 
