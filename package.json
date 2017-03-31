@@ -1,11 +1,10 @@
 {
-  "name": "dhsniem-backend",
+  "name": "NIEM Movement - Backend",
   "version": "0.0.0",
-  "description": "Backend for the dhsniem project.",
+  "description": "Backend for the NIEM Movement project.",
   "main": "index.js",
-  "author": "Federal Deloitte Digital",
-  "license": "UNLICENSED",
-  "repository": "https://stash.federal.ddhive.com/projects/DN/repos/dhsniem-backend",
+  "author": "NIEMconnects",
+  "repository": "https://github.com/NIEMconnects/movement-backend",
   "scripts": {
     "start": "node index.js",
     "test": "node node_modules/mocha/bin/mocha test/**/*",
