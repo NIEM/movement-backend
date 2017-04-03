@@ -7,6 +7,7 @@ const jsonTypeMapping = require('../../components/jsonTypeMapping');
  * Route handler for Express
  * This returns a JSON schema from a list of NIEM items
  */
+
 module.exports = function jsonschema(req, res, next) {
 
   let itemsToExport = req.query.itemsToExport;
@@ -30,7 +31,15 @@ module.exports = function jsonschema(req, res, next) {
   }
 
 
-  // For a given list of element names return their full document object and their children as derived from the type. Convert to JSON Schema format.
+  /**
+   * @name getElementObjects
+   *
+   * @description For a given list of element names, return their full document object and their children as derived from the type. Convert to JSON Schema format.
+   *
+   * @param [String] - elements
+   *
+   * @returns {Promise}
+   */
   function getElementObjects(elements) {
 
     return makeSolrRequest(buildQueryString(constructOrQuery(elements))).then( (elementDocs) => {
@@ -69,7 +78,15 @@ module.exports = function jsonschema(req, res, next) {
     });
   }
 
-
+  /**
+   * @name generateTypeSchema
+   *
+   * @description For a type entity (type document), generate and add the JSON schema to the output. Accounts for basic properties, simple tpyes, parent/base types, child elements, and enumeration facets. Processes requests in parallel when possible.
+   *
+   * @param {Object} - typeDoc
+   *
+   * @returns {Promise}
+   */
   function generateTypeSchema(typeDoc) {
     let typeSchema = getBasicAttributes(typeDoc);
     let properties;
@@ -103,6 +120,16 @@ module.exports = function jsonschema(req, res, next) {
       return typeSchema;
     });
 
+
+  /**
+   * @name getParentType
+   *
+   * @description A recursive function that makes solr call to retrieve the full parent document from a base type or simple type reference. Upon retrieving the document, generates the json schema for that parent type.
+   *
+   * @param {String} - parentTypeId
+   *
+   * @returns {Promise}
+   */
     function getParentType(parentTypeId) {
       if (jsonTypeMapping[parentTypeId]) {
         Object.assign(typeSchema, jsonTypeMapping[parentTypeId]);
@@ -120,6 +147,15 @@ module.exports = function jsonschema(req, res, next) {
   }
 
 
+  /**
+   * @name getSubstitutionGroups
+   *
+   * @description For a given element id, checks to see if substitution groups exist for it. If subsitution groups are found, it calls the getElementObjects function to start a new branch for that particular referenced element.
+   *
+   * @param {String} - elementId
+   *
+   * @returns {Promise}
+   */
   function getSubstitutionGroups(elementId) {
     let sgQuery = 'substitutionGroup:' + elementId.split(':')[0] + '\\:' + elementId.split(':')[1];
     return makeSolrRequest(buildQueryString(sgQuery)).then( (subGroups) => {
@@ -138,6 +174,15 @@ module.exports = function jsonschema(req, res, next) {
 };
 
 
+/**
+ * @name constructOrQuery
+ *
+ * @description For an array of ids, concatenates them into a query readable by solr.
+ *
+ * @param [String] - itemArr
+ *
+ * @returns {String} - formatted with 'id:(...)'
+ */
 function constructOrQuery(itemArr) {
   let orQueryString = itemArr.map( (item) => {
     return item.split(':')[0] + '\\:' + item.split(':')[1];
@@ -146,6 +191,15 @@ function constructOrQuery(itemArr) {
 }
 
 
+/**
+ * @name buildQueryString
+ *
+ * @description Stringifies an object with a query to be passed to solr
+ *
+ * @param {String} - query
+ *
+ * @returns {String} - a stringified request object
+ */
 function buildQueryString(query) {
   return querystring.stringify({
     'q': query
@@ -153,6 +207,15 @@ function buildQueryString(query) {
 }
 
 
+/**
+ * @name getDocById
+ *
+ * @description Makes a solr request to get a document by its entity id.
+ *
+ * @param {String} - id
+ *
+ * @returns {Promise}
+ */
 function getDocById(id) {
   let idQuery = 'id:' + id.split(':')[0] + '\\:' + id.split(':')[1];
   return makeSolrRequest(buildQueryString(idQuery)).then( (solrResponse) => {
@@ -161,6 +224,15 @@ function getDocById(id) {
 }
 
 
+/**
+ * @name getEnumFromSimpleType
+ *
+ * @description For a simple type document, parses it and gets its enumeration facet values.
+ *
+ * @param {Object} - simpleTypeDoc
+ *
+ * @returns [Object] - an enumeration for the simple type with key value pairs
+ */
 function getEnumFromSimpleType(simpleTypeDoc) {
   let enumeration;
   simpleTypeDoc.facets.forEach( (facet) => {
@@ -173,6 +245,15 @@ function getEnumFromSimpleType(simpleTypeDoc) {
 }
 
 
+/**
+ * @name setRefsInObject
+ *
+ * @description When generating a list of json schema refs, sets them as key value pairs in an object.
+ *
+ * @param [String] - elements
+ *
+ * @returns {refs}
+ */
 function setRefsInObject(elements) {
   let refs = {};
   elements.forEach( (el) => {
@@ -182,6 +263,15 @@ function setRefsInObject(elements) {
 }
 
 
+/**
+ * @name setRefsInArray
+ *
+ * @description When generating a list of json schema refs, sets them as key value pairs in an object.
+ *
+ * @param [String] - elements
+ *
+ * @returns [{Object}] - an array of object references for the json schema
+ */
 function setRefsInArray(elements) {
   let refs = [];
   elements.forEach( (el) => {
@@ -191,6 +281,15 @@ function setRefsInArray(elements) {
 }
 
 
+/**
+ * @name createReference
+ *
+ * @description Formats a reference into standard json schema syntax
+ *
+ * @param {String} - entity
+ *
+ * @returns {Object}
+ */
 function createReference(entity) {
   return {
     "$ref": "#/properties/" + entity
@@ -198,6 +297,15 @@ function createReference(entity) {
 }
 
 
+/**
+ * @name getBasicAttributes
+ *
+ * @description For an entity, will begin to build out the json schema object with basic properties such as namespace, namespace prefix, and description.
+ *
+ * @param {String} - entity
+ *
+ * @returns {Object}
+ */
 function getBasicAttributes(entity) {
   return {
     namespace: entity.namespace,
@@ -207,6 +315,15 @@ function getBasicAttributes(entity) {
 }
 
 
+/**
+ * @name generateElementSchema
+ *
+ * @description Generates json schema output for an element, including the type reference.
+ *
+ * @param {Object} - elementDoc
+ *
+ * @returns {Object}
+ */
 function generateElementSchema(elementDoc) {
   let elSchema = getBasicAttributes(elementDoc);
   if (elementDoc.type) {
