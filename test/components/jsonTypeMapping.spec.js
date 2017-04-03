@@ -6,9 +6,9 @@ const expect = require('chai').expect,
 describe('JSON Type Mapping', function() {
   describe('jsonTypeMapping', function() {
     it('should instantiate the JSON Type Mapping', function() {
-      expect(jsonTypeMapping["niem-xs:boolean"]).to.equal({"type": "boolean"});
-      expect(jsonTypeMapping["niem-xs:nonNegativeInteger"]).to.equal({"type": "number", "minimum": "0"});
-      expect(jsonTypeMapping["structures:ObjectType"]).to.equal({"type": "object"});
+      expect(jsonTypeMapping["niem-xs:boolean"]).to.deep.equal({"type": "boolean"});
+      expect(jsonTypeMapping["niem-xs:nonNegativeInteger"]).to.deep.equal({"type": "number", "minimum": "0"});
+      expect(jsonTypeMapping["structures:ObjectType"]).to.deep.equal({"type": "object"});
     });
   });
 });
