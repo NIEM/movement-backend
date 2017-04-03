@@ -20,7 +20,11 @@ describe('jsonschema: GET', function() {
 		sandbox = sinon.sandbox.create();
 		next_spy = sandbox.spy();
 
-		req = {};
+		req = {
+			query: {
+				itemsToExport: ['nc:DateRange']
+			}
+		};
 		res = {
 			json: sandbox.spy()
 		};
@@ -32,7 +36,7 @@ describe('jsonschema: GET', function() {
 
 	it('should return data', function(done) {
 		jsonschemaGET(req, res, next_spy).then(function() {
-			expect(res.json.calledWith('foo')).to.be.true;
+			expect(res.json.calledWith(['nc:DateRange'])).to.be.true;
 			done();
 		});
 	});
