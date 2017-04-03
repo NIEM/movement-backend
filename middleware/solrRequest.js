@@ -4,12 +4,21 @@ module.exports = makeSolrRequest;
 
 const http = require('http');
 
+/**
+ * @name makeSolrRequest
+ *
+ * @description Makes an http GET request to Solr with a given query. When successful, will return the documents of the solr response.
+ *
+ * @param {String} - query
+ *
+ * @returns {Promise}
+ */
 function makeSolrRequest(query) {
 
   return new Promise((resolve, reject) => {
 
     let options = {
-      hostname: 'wist-solr',
+      hostname: 'movement-solr',
       port: 8983,
       path: '/solr/dhsniem/select?' + query,
       method: 'GET',

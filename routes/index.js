@@ -11,6 +11,10 @@ let cors = require('middleware/cors');
 module.exports = function(app) {
 	app.use(cors);
 
+  app.post('/login', require('./login'));
+  app.post('/logout', require('./logout'));
+  app.post('/addUser', require('./AddUser'));
+
 	/**
 	* GET endpoint for requesting JSON schema
 	*/
