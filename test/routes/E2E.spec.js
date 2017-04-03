@@ -79,33 +79,33 @@ describe('E2E Testing', function() {
 		});
 	});
 
-	it('should login and allow access to a protected route', function(done) {
-		login(USER_NAME, PASSWORD).then(function(response) {
-			expect(response.statusCode).to.equal(CONST.HTTP_STATUS_CODE.OK);
-			let cookie = response.headers['set-cookie'][0].split(';')[0];
+	// it('should login and allow access to a protected route', function(done) {
+	// 	login(USER_NAME, PASSWORD).then(function(response) {
+	// 		expect(response.statusCode).to.equal(CONST.HTTP_STATUS_CODE.OK);
+	// 		let cookie = response.headers['set-cookie'][0].split(';')[0];
 
-			request({
-				method: 'GET',
-				headers: {
-					'Cookie': cookie
-				},
-				url: 'http://localhost:7000/example',
-			}, function (err, get_response) {
-				if(err) return done(err);
-				expect(get_response.statusCode).to.equal(CONST.HTTP_STATUS_CODE.OK);
-				done();
-			});
-		});
-	});
+	// 		request({
+	// 			method: 'GET',
+	// 			headers: {
+	// 				'Cookie': cookie
+	// 			},
+	// 			url: 'http://localhost:7000/example',
+	// 		}, function (err, get_response) {
+	// 			if(err) return done(err);
+	// 			expect(get_response.statusCode).to.equal(CONST.HTTP_STATUS_CODE.OK);
+	// 			done();
+	// 		});
+	// 	});
+	// });
 
-	it('should not allow access to a protected route', function(done) {
-		request({
-			method: 'GET',
-			url: 'http://localhost:7000/example',
-		}, function (err, get_response) {
-			if(err) return done(err);
-			expect(get_response.statusCode).to.equal(CONST.HTTP_STATUS_CODE.UNAUTHENTICATED);
-			done();
-		});
-	});
+	// it('should not allow access to a protected route', function(done) {
+	// 	request({
+	// 		method: 'GET',
+	// 		url: 'http://localhost:7000/example',
+	// 	}, function (err, get_response) {
+	// 		if(err) return done(err);
+	// 		expect(get_response.statusCode).to.equal(CONST.HTTP_STATUS_CODE.UNAUTHENTICATED);
+	// 		done();
+	// 	});
+	// });
 });
