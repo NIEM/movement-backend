@@ -106,7 +106,7 @@ module.exports = function jsonschema(req, res, next) {
       }));
     }
 
-    if (typeDoc.facets) {
+    if (typeDoc['facetValue_enumeration']) {
       typeSchema.enum = getEnumFromSimpleType(typeDoc);
     }
 
@@ -141,7 +141,7 @@ module.exports = function jsonschema(req, res, next) {
           }
         }).then( (parentTypeSchema) => {
           schemaExport.properties[parentTypeId] = parentTypeSchema;
-        }));      
+        }));
       }
     }
   }
@@ -168,7 +168,7 @@ module.exports = function jsonschema(req, res, next) {
       }
     }).catch( (err) => {
       return;
-    });  
+    });
   }
 
 };
@@ -231,17 +231,10 @@ function getDocById(id) {
  *
  * @param {Object} - simpleTypeDoc
  *
- * @returns [Object] - an enumeration for the simple type with key value pairs
+ * @returns [String] - an enumeration for the simple type
  */
 function getEnumFromSimpleType(simpleTypeDoc) {
-  let enumeration;
-  simpleTypeDoc.facets.forEach( (facet) => {
-    if (JSON.parse(facet).enumeration) {
-      enumeration = JSON.parse(facet).enumeration.facetValue;
-      return;
-    }
-  });
-  return enumeration;
+  return simpleTypeDoc['facetValue_enumeration'];
 }
 
 
@@ -310,7 +303,7 @@ function getBasicAttributes(entity) {
   return {
     namespace: entity.namespace,
     namespacePrefix: entity.namespacePrefix,
-    description: entity.definition    
+    description: entity.definition
   };
 }
 

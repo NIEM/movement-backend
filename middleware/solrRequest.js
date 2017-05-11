@@ -39,7 +39,7 @@ function makeSolrRequest(query) {
         if (JSON.parse(responseBody).response && JSON.parse(responseBody).response.docs) {
           return resolve(JSON.parse(responseBody).response.docs);
         } else {
-          return reject('Error processing Solr Request'); 
+          return reject('Error processing Solr Request');
         }
       });
     });
