@@ -280,7 +280,7 @@ function createPropertyRef(entity) {
 /**
  * @name createDefinitionRef
  *
- * @description Formats a reference into standard json schema syntax
+ * @description Formats a reference into standard json schema syntax for a definition ref
  *
  * @param {String} - entity
  *
