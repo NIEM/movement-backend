@@ -15,7 +15,8 @@ module.exports = function jsonschema(req, res, next) {
   let schemaExport = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "additionalProperties": false,
-    "properties": {}
+    "properties": {},
+    "definitions": {}
   };
 
   if (itemsToExport) {
@@ -56,7 +57,7 @@ module.exports = function jsonschema(req, res, next) {
           return getDocById(elementDoc.type).then( (typeDoc) => {
             return generateTypeSchema(typeDoc);
           }).then( (typeSchema) => {
-            schemaExport.properties[elementDoc.type] = typeSchema;
+            schemaExport.definitions[elementDoc.type] = typeSchema;
             return elementDoc.id;
           });
 
@@ -136,11 +137,11 @@ module.exports = function jsonschema(req, res, next) {
       } else {
         requests.push(getDocById(parentTypeId).then( (parentTypeDoc) => {
           if (parentTypeDoc) {
-            typeSchema.allOf = [createReference(parentTypeDoc.id)];
+            typeSchema.allOf = [createDefinitionRef(parentTypeDoc.id)];
             return generateTypeSchema(parentTypeDoc);
           }
         }).then( (parentTypeSchema) => {
-          schemaExport.properties[parentTypeId] = parentTypeSchema;
+          schemaExport.definitions[parentTypeId] = parentTypeSchema;
         }));
       }
     }
@@ -236,7 +237,7 @@ function getDocById(id) {
 function setRefsInObject(elements) {
   let refs = {};
   elements.forEach( (el) => {
-    refs[el] = createReference(el);
+    refs[el] = createPropertyRef(el);
   });
   return refs;
 }
@@ -254,14 +255,30 @@ function setRefsInObject(elements) {
 function setRefsInArray(elements) {
   let refs = [];
   elements.forEach( (el) => {
-    refs.push(createReference(el));
+    refs.push(createPropertyRef(el));
   });
   return refs;
 }
 
 
 /**
- * @name createReference
+ * @name createPropertyRef
+ *
+ * @description Formats a reference into standard json schema syntax for a property ref
+ *
+ * @param {String} - entity
+ *
+ * @returns {Object}
+ */
+function createPropertyRef(entity) {
+  return {
+    "$ref": "#/properties/" + entity
+  };
+}
+
+
+/**
+ * @name createDefinitionRef
  *
  * @description Formats a reference into standard json schema syntax
  *
@@ -269,9 +286,9 @@ function setRefsInArray(elements) {
  *
  * @returns {Object}
  */
-function createReference(entity) {
+function createDefinitionRef(entity) {
   return {
-    "$ref": "#/properties/" + entity
+    "$ref": "#/definitions/" + entity
   };
 }
 
@@ -307,7 +324,7 @@ function generateElementSchema(elementDoc) {
     if (jsonTypeMapping[elementDoc.type]) {
       Object.assign(elSchema, jsonTypeMapping[elementDoc.type]);
     } else {
-      elSchema.$ref = "#/properties/" + elementDoc.type;
+      elSchema.$ref = "#/definitions/" + elementDoc.type;
     }
   }
   return elSchema;
