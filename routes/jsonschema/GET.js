@@ -106,8 +106,8 @@ module.exports = function jsonschema(req, res, next) {
       }));
     }
 
-    if (typeDoc['facetValue_enumeration']) {
-      typeSchema.enum = getEnumFromSimpleType(typeDoc);
+    if (typeDoc.enumValues) {
+      typeSchema.enum = typeDoc.enumValues;
     }
 
     return Promise.all(requests).then( () => {
@@ -221,20 +221,6 @@ function getDocById(id) {
   return makeSolrRequest(buildQueryString(idQuery)).then( (solrResponse) => {
     return solrResponse[0];
   });
-}
-
-
-/**
- * @name getEnumFromSimpleType
- *
- * @description For a simple type document, parses it and gets its enumeration facet values.
- *
- * @param {Object} - simpleTypeDoc
- *
- * @returns [String] - an enumeration for the simple type
- */
-function getEnumFromSimpleType(simpleTypeDoc) {
-  return simpleTypeDoc['facetValue_enumeration'];
 }
 
 
