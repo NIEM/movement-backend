@@ -279,7 +279,7 @@ function createReference(entity) {
 /**
  * @name getBasicAttributes
  *
- * @description For an entity, will begin to build out the json schema object with basic properties such as namespace, namespace prefix, and description.
+ * @description For an entity, will begin to build out the json schema object with basic properties such as description.
  *
  * @param {String} - entity
  *
@@ -287,8 +287,6 @@ function createReference(entity) {
  */
 function getBasicAttributes(entity) {
   return {
-    namespace: entity.namespace,
-    namespacePrefix: entity.namespacePrefix,
     description: entity.definition
   };
 }
