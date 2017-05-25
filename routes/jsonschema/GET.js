@@ -32,6 +32,11 @@ module.exports = function jsonschema(req, res, next) {
   }
 
 
+
+
+
+
+
   /**
    * @name getElementObjects
    *
@@ -41,37 +46,37 @@ module.exports = function jsonschema(req, res, next) {
    *
    * @returns {Promise}
    */
-  function getElementObjects(elements) {
+  function getElementObjects(elementIds) {
 
-    return makeSolrRequest(buildQueryString(constructOrQuery(elements))).then( (elementDocs) => {
+    return makeSolrRequest(buildQueryString(constructOrQuery(elementIds))).then( (elementObjects) => {
       // Filter out any elements that are not a part of the business glossary.
-      elementDocs = elementDocs.filter( (elementDoc) => {
+      elementObjects = elementObjects.filter( (elementDoc) => {
         return elementDoc.isBG;
       });
 
-      return Promise.all(elementDocs.map( (elementDoc) => {
-
-        if (elementDoc.type && !jsonTypeMapping[elementDoc.type] && addedItems.indexOf(elementDoc.type) < 0) {
-          addedItems.push(elementDoc.id, elementDoc.type);
-          schemaExport.properties[elementDoc.id] = generateElementSchema(elementDoc);
-          return getDocById(elementDoc.type).then( (typeDoc) => {
+      return Promise.all(elementObjects.map( (elementObject) => {
+        // If the element has a type, isn't a primitive element, and hasn't been added to our schema yet
+        if (elementObject.type && !jsonTypeMapping[elementObject.type] && addedItems.indexOf(elementObject.type) < 0) {
+          addedItems.push(elementObject.id, elementObject.type); // add the element and its type to the tracker
+          schemaExport.properties[elementObject.id] = generateElementSchema(elementObject);
+          return getDocById(elementObject.type).then( (typeDoc) => {
             return generateTypeSchema(typeDoc);
           }).then( (typeSchema) => {
-            schemaExport.definitions[elementDoc.type] = typeSchema;
-            return elementDoc.id;
+            schemaExport.definitions[elementObject.type] = typeSchema;
+            return elementObject.id;
           });
-
-        } else if (addedItems.indexOf(elementDoc.id) < 0) {
-          addedItems.push(elementDoc.id);
-          schemaExport.properties[elementDoc.id] = generateElementSchema(elementDoc);
-          return getSubstitutionGroups(elementDoc.id).then( (subGroupsRefs) => {
-            schemaExport.properties[elementDoc.id].anyOf = subGroupsRefs;
+        // Else if element has not been added to our schema
+        } else if (addedItems.indexOf(elementObject.id) < 0) {
+          addedItems.push(elementObject.id);
+          schemaExport.properties[elementObject.id] = generateElementSchema(elementObject);
+          return getSubstitutionGroups(elementObject.id).then( (subGroupsRefs) => {
+            schemaExport.properties[elementObject.id].anyOf = subGroupsRefs;
           }).then( () => {
-            return elementDoc.id;
+            return elementObject.id;
           });
-
+        // Else element exists in schema, so just return its id
         } else {
-          return elementDoc.id;
+          return elementObject.id;
         }
 
       }));
@@ -95,16 +100,6 @@ module.exports = function jsonschema(req, res, next) {
 
     if (typeDoc.parentSimpleType) {
       getParentType(typeDoc.parentSimpleType);
-    }
-
-    if (typeDoc.parentTypeName) {
-      getParentType(typeDoc.parentTypeName);
-    }
-
-    if (typeDoc.elements) {
-      requests.push(getElementObjects(typeDoc.elements).then( (childElements) => {
-        properties = setRefsInObject(childElements);
-      }));
     }
 
     if (typeDoc.enumValues) {
@@ -222,24 +217,6 @@ function getDocById(id) {
   return makeSolrRequest(buildQueryString(idQuery)).then( (solrResponse) => {
     return solrResponse[0];
   });
-}
-
-
-/**
- * @name setRefsInObject
- *
- * @description When generating a list of json schema refs, sets them as key value pairs in an object.
- *
- * @param [String] - elements
- *
- * @returns {refs}
- */
-function setRefsInObject(elements) {
-  let refs = {};
-  elements.forEach( (el) => {
-    refs[el] = createPropertyRef(el);
-  });
-  return refs;
 }
 
 
