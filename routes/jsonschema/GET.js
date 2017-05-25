@@ -32,11 +32,6 @@ module.exports = function jsonschema(req, res, next) {
   }
 
 
-
-
-
-
-
   /**
    * @name getElementObjects
    *
