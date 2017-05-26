@@ -11,6 +11,8 @@ docker network create niem-network
 docker run -dti -p 27017:27017 --name movement-mongo --net niem-network
 ```
 
+To generate a new list of nonparentTypes for the Solr data import, run: `node writeNonparentTypes`.
+
 Note: Also build and run the Solr container. Then build and run the backend container, from the repo's root directory:
 ```
 docker build -t movement-backend .
