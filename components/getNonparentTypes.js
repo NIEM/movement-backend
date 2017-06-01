@@ -8,7 +8,17 @@ const makeSolrRequest = require('../middleware/solrRequest');
  */
 
 module.exports = function getNonparentTypes() {
-  return makeSolrRequest(buildQueryString()).then(typeObjects => typeObjects.map(typeObject => typeObject.id));
+  return getDocsFromSolr(buildQueryString()).then(typeObjects => typeObjects.map(typeObject => typeObject.id));
+}
+
+/**
+ * @name getDocsFromSolr
+ * @description Returns only the docs array from the Solr response
+ * @param {String} - query
+ * @returns {Object[]}
+ */
+function getDocsFromSolr(query) {
+  return makeSolrRequest(query).then(responseBody => responseBody.response.docs);
 }
 
 /**

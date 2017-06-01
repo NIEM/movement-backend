@@ -43,7 +43,7 @@ module.exports = function jsonschema(req, res, next) {
    */
   function getElementObjects(elementIds) {
 
-    return makeSolrRequest(buildQueryString(constructOrQuery(elementIds))).then( (elementObjects) => {
+    return getDocsFromSolr(buildQueryString(constructOrQuery(elementIds))).then( (elementObjects) => {
       // Filter out any elements that are not a part of the business glossary.
       elementObjects = elementObjects.filter( (elementDoc) => {
         return elementDoc.isBG;
@@ -149,7 +149,7 @@ module.exports = function jsonschema(req, res, next) {
    */
   function getSubstitutionGroups(elementId) {
     let sgQuery = 'substitutionGroup:' + elementId.split(':')[0] + '\\:' + elementId.split(':')[1];
-    return makeSolrRequest(buildQueryString(sgQuery)).then( (subGroups) => {
+    return getDocsFromSolr(buildQueryString(sgQuery)).then( (subGroups) => {
       if (subGroups) {
         return getElementObjects(subGroups.map( (subGroupElement) => {
           return subGroupElement.id;
@@ -209,7 +209,7 @@ function buildQueryString(query) {
  */
 function getDocById(id) {
   let idQuery = 'id:' + id.split(':')[0] + '\\:' + id.split(':')[1];
-  return makeSolrRequest(buildQueryString(idQuery)).then( (solrResponse) => {
+  return getDocsFromSolr(buildQueryString(idQuery)).then( (solrResponse) => {
     return solrResponse[0];
   });
 }
@@ -300,4 +300,17 @@ function generateElementSchema(elementDoc) {
     }
   }
   return elSchema;
+}
+
+/**
+ * @name getDocsFromSolr
+ *
+ * @description Returns only the docs array from the Solr response
+ *
+ * @param {String} - query
+ *
+ * @returns {Object[]}
+ */
+function getDocsFromSolr(query) {
+  return makeSolrRequest(query).then(responseBody => responseBody.response.docs);
 }

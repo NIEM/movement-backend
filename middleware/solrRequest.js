@@ -37,7 +37,7 @@ function makeSolrRequest(query) {
 
       res.on('end', () => {
         if (JSON.parse(responseBody).response && JSON.parse(responseBody).response.docs) {
-          return resolve(JSON.parse(responseBody).response.docs);
+          return resolve(JSON.parse(responseBody));
         } else {
           return reject('Error processing Solr Request');
         }
