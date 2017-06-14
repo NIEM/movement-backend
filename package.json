@@ -1,10 +1,10 @@
 {
-  "name": "dhsniem-backend",
+  "name": "movement-backend",
   "version": "0.0.0",
   "description": "Backend for the NIEM Movement project.",
   "main": "index.js",
-  "author": "NIEMconnects",
-  "repository": "https://github.com/NIEMconnects/movement-backend",
+  "author": "NIEM",
+  "repository": "https://github.com/NIEM/movement-frontend",
   "scripts": {
     "start": "node index.js",
     "depCheck": "node node_modules/nsp/bin/nsp check"
