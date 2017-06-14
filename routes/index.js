@@ -1,5 +1,5 @@
 'use strict';
-let authenticate = require('middleware/authenticate');
+
 let errorHandler = require('middleware/errorHandler');
 let cors = require('middleware/cors');
 
@@ -10,10 +10,6 @@ let cors = require('middleware/cors');
  */
 module.exports = function(app) {
 	app.use(cors);
-
-  app.post('/login', require('./login'));
-  app.post('/logout', require('./logout'));
-  app.post('/addUser', require('./AddUser'));
 
 	/**
 	* GET endpoint for requesting JSON schema

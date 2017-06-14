@@ -15,7 +15,8 @@ module.exports = function jsonschema(req, res, next) {
   let schemaExport = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "additionalProperties": false,
-    "properties": {}
+    "properties": {},
+    "definitions": {}
   };
 
   if (itemsToExport) {
@@ -40,37 +41,37 @@ module.exports = function jsonschema(req, res, next) {
    *
    * @returns {Promise}
    */
-  function getElementObjects(elements) {
+  function getElementObjects(elementIds) {
 
-    return makeSolrRequest(buildQueryString(constructOrQuery(elements))).then( (elementDocs) => {
+    return getDocsFromSolr(buildQueryString(constructOrQuery(elementIds))).then( (elementObjects) => {
       // Filter out any elements that are not a part of the business glossary.
-      elementDocs = elementDocs.filter( (elementDoc) => {
+      elementObjects = elementObjects.filter( (elementDoc) => {
         return elementDoc.isBG;
       });
 
-      return Promise.all(elementDocs.map( (elementDoc) => {
-
-        if (elementDoc.type && !jsonTypeMapping[elementDoc.type] && addedItems.indexOf(elementDoc.type) < 0) {
-          addedItems.push(elementDoc.id, elementDoc.type);
-          schemaExport.properties[elementDoc.id] = generateElementSchema(elementDoc);
-          return getDocById(elementDoc.type).then( (typeDoc) => {
+      return Promise.all(elementObjects.map( (elementObject) => {
+        // If the element has a type, isn't a primitive element, and hasn't been added to our schema yet
+        if (elementObject.type && !jsonTypeMapping[elementObject.type] && addedItems.indexOf(elementObject.type) < 0) {
+          addedItems.push(elementObject.id, elementObject.type); // add the element and its type to the tracker
+          schemaExport.properties[elementObject.id] = generateElementSchema(elementObject);
+          return getDocById(elementObject.type).then( (typeDoc) => {
             return generateTypeSchema(typeDoc);
           }).then( (typeSchema) => {
-            schemaExport.properties[elementDoc.type] = typeSchema;
-            return elementDoc.id;
+            schemaExport.definitions[elementObject.type] = typeSchema;
+            return elementObject.id;
           });
-
-        } else if (addedItems.indexOf(elementDoc.id) < 0) {
-          addedItems.push(elementDoc.id);
-          schemaExport.properties[elementDoc.id] = generateElementSchema(elementDoc);
-          return getSubstitutionGroups(elementDoc.id).then( (subGroupsRefs) => {
-            schemaExport.properties[elementDoc.id].anyOf = subGroupsRefs;
+        // Else if element has not been added to our schema
+        } else if (addedItems.indexOf(elementObject.id) < 0) {
+          addedItems.push(elementObject.id);
+          schemaExport.properties[elementObject.id] = generateElementSchema(elementObject);
+          return getSubstitutionGroups(elementObject.id).then( (subGroupsRefs) => {
+            schemaExport.properties[elementObject.id].anyOf = subGroupsRefs;
           }).then( () => {
-            return elementDoc.id;
+            return elementObject.id;
           });
-
+        // Else element exists in schema, so just return its id
         } else {
-          return elementDoc.id;
+          return elementObject.id;
         }
 
       }));
@@ -96,18 +97,8 @@ module.exports = function jsonschema(req, res, next) {
       getParentType(typeDoc.parentSimpleType);
     }
 
-    if (typeDoc.parentTypeName) {
-      getParentType(typeDoc.parentTypeName);
-    }
-
-    if (typeDoc.elements) {
-      requests.push(getElementObjects(typeDoc.elements).then( (childElements) => {
-        properties = setRefsInObject(childElements);
-      }));
-    }
-
-    if (typeDoc.facets) {
-      typeSchema.enum = getEnumFromSimpleType(typeDoc);
+    if (typeDoc.enumValues) {
+      typeSchema.enum = typeDoc.enumValues;
     }
 
     return Promise.all(requests).then( () => {
@@ -136,12 +127,12 @@ module.exports = function jsonschema(req, res, next) {
       } else {
         requests.push(getDocById(parentTypeId).then( (parentTypeDoc) => {
           if (parentTypeDoc) {
-            typeSchema.allOf = [createReference(parentTypeDoc.id)];
+            typeSchema.allOf = [createDefinitionRef(parentTypeDoc.id)];
             return generateTypeSchema(parentTypeDoc);
           }
         }).then( (parentTypeSchema) => {
-          schemaExport.properties[parentTypeId] = parentTypeSchema;
-        }));      
+          schemaExport.definitions[parentTypeId] = parentTypeSchema;
+        }));
       }
     }
   }
@@ -158,7 +149,7 @@ module.exports = function jsonschema(req, res, next) {
    */
   function getSubstitutionGroups(elementId) {
     let sgQuery = 'substitutionGroup:' + elementId.split(':')[0] + '\\:' + elementId.split(':')[1];
-    return makeSolrRequest(buildQueryString(sgQuery)).then( (subGroups) => {
+    return getDocsFromSolr(buildQueryString(sgQuery)).then( (subGroups) => {
       if (subGroups) {
         return getElementObjects(subGroups.map( (subGroupElement) => {
           return subGroupElement.id;
@@ -168,7 +159,7 @@ module.exports = function jsonschema(req, res, next) {
       }
     }).catch( (err) => {
       return;
-    });  
+    });
   }
 
 };
@@ -218,48 +209,9 @@ function buildQueryString(query) {
  */
 function getDocById(id) {
   let idQuery = 'id:' + id.split(':')[0] + '\\:' + id.split(':')[1];
-  return makeSolrRequest(buildQueryString(idQuery)).then( (solrResponse) => {
+  return getDocsFromSolr(buildQueryString(idQuery)).then( (solrResponse) => {
     return solrResponse[0];
   });
-}
-
-
-/**
- * @name getEnumFromSimpleType
- *
- * @description For a simple type document, parses it and gets its enumeration facet values.
- *
- * @param {Object} - simpleTypeDoc
- *
- * @returns [Object] - an enumeration for the simple type with key value pairs
- */
-function getEnumFromSimpleType(simpleTypeDoc) {
-  let enumeration;
-  simpleTypeDoc.facets.forEach( (facet) => {
-    if (JSON.parse(facet).enumeration) {
-      enumeration = JSON.parse(facet).enumeration.facetValue;
-      return;
-    }
-  });
-  return enumeration;
-}
-
-
-/**
- * @name setRefsInObject
- *
- * @description When generating a list of json schema refs, sets them as key value pairs in an object.
- *
- * @param [String] - elements
- *
- * @returns {refs}
- */
-function setRefsInObject(elements) {
-  let refs = {};
-  elements.forEach( (el) => {
-    refs[el] = createReference(el);
-  });
-  return refs;
 }
 
 
@@ -275,22 +227,22 @@ function setRefsInObject(elements) {
 function setRefsInArray(elements) {
   let refs = [];
   elements.forEach( (el) => {
-    refs.push(createReference(el));
+    refs.push(createPropertyRef(el));
   });
   return refs;
 }
 
 
 /**
- * @name createReference
+ * @name createPropertyRef
  *
- * @description Formats a reference into standard json schema syntax
+ * @description Formats a reference into standard json schema syntax for a property ref
  *
  * @param {String} - entity
  *
  * @returns {Object}
  */
-function createReference(entity) {
+function createPropertyRef(entity) {
   return {
     "$ref": "#/properties/" + entity
   };
@@ -298,9 +250,25 @@ function createReference(entity) {
 
 
 /**
+ * @name createDefinitionRef
+ *
+ * @description Formats a reference into standard json schema syntax for a definition ref
+ *
+ * @param {String} - entity
+ *
+ * @returns {Object}
+ */
+function createDefinitionRef(entity) {
+  return {
+    "$ref": "#/definitions/" + entity
+  };
+}
+
+
+/**
  * @name getBasicAttributes
  *
- * @description For an entity, will begin to build out the json schema object with basic properties such as namespace, namespace prefix, and description.
+ * @description For an entity, will begin to build out the json schema object with basic properties such as description.
  *
  * @param {String} - entity
  *
@@ -308,9 +276,7 @@ function createReference(entity) {
  */
 function getBasicAttributes(entity) {
   return {
-    namespace: entity.namespace,
-    namespacePrefix: entity.namespacePrefix,
-    description: entity.definition    
+    description: entity.definition
   };
 }
 
@@ -330,8 +296,21 @@ function generateElementSchema(elementDoc) {
     if (jsonTypeMapping[elementDoc.type]) {
       Object.assign(elSchema, jsonTypeMapping[elementDoc.type]);
     } else {
-      elSchema.$ref = "#/properties/" + elementDoc.type;
+      elSchema.$ref = "#/definitions/" + elementDoc.type;
     }
   }
   return elSchema;
+}
+
+/**
+ * @name getDocsFromSolr
+ *
+ * @description Returns only the docs array from the Solr response
+ *
+ * @param {String} - query
+ *
+ * @returns {Object[]}
+ */
+function getDocsFromSolr(query) {
+  return makeSolrRequest(query).then(responseBody => responseBody.response.docs);
 }
