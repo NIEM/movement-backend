@@ -8,7 +8,7 @@ Prior to coming to this repo, did you happen to catch our [Movement overview](ht
 ## Got feedback? 
 For general tool feedback or issues please [open an issue in the Movement repo](https://github.com/NIEM/Movement/issues)  or [contact us on NIEM.gov](https://niem.gov/contact-us). 
 
-For topics specific to contributions to Movement's frontend, please [submit an issue](https://github.com/NIEM/movement-backend/issues).
+For topics specific to contributions to Movement's backend, please [submit an issue](https://github.com/NIEM/movement-backend/issues).
 
 # Running the App with Docker
 
