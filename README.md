@@ -3,6 +3,13 @@ NIEM - Movement: Backend
 
 The other repositories include the [Movement - Webapp](https://github.com/NIEM/movement-frontend) and the [Movement - Solr](https://github.com/NIEM/movement-solr).
 
+Prior to coming to this repo, did you happen to catch our [Movement overview](https://github.com/NIEM/Movement)?
+
+## Got feedback? 
+For general tool feedback or issues please [open an issue in the Movement repo](https://github.com/NIEM/Movement/issues)  or [contact us on NIEM.gov](https://niem.gov/contact-us). 
+
+For topics specific to contributions to Movement's frontend, please [submit an issue](https://github.com/NIEM/movement-backend/issues).
+
 # Running the App with Docker
 
 The backend can be run via Docker. To run the node app locally with Docker, first make sure you have installed and setup the NIEM Movement Docker config:
