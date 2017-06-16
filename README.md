@@ -1,7 +1,7 @@
 NIEM - Movement: Backend
 ====================
 
-The other repositories include the [Movement - Webapp](https://github.com/NIEM/movement-frontend) and the [Movement - Solr](https://github.com/NIEM/movement-solr).
+The other code repositories include the [Movement - Webapp](https://github.com/NIEM/movement-frontend) and the [Movement - Solr](https://github.com/NIEM/movement-solr).
 
 Prior to coming to this repo, did you happen to catch our [Movement overview](https://github.com/NIEM/Movement)?
 
