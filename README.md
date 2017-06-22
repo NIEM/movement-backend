@@ -6,9 +6,7 @@ The other code repositories include the [Movement - Webapp](https://github.com/N
 Prior to coming to this repo, did you happen to catch our [Movement overview](https://github.com/NIEM/Movement)?
 
 ## Got feedback? 
-For general tool feedback or issues please [open an issue in the Movement repo](https://github.com/NIEM/Movement/issues)  or [contact us on NIEM.gov](https://niem.gov/contact-us). 
-
-For topics specific to contributions to Movement's backend, please [submit an issue](https://github.com/NIEM/movement-backend/issues).
+In the spirit of open-source tooling, we have provided a [Scrum board](https://github.com/NIEM/Movement/projects/1) that allows users to keep track of Movement’s issues and enhancements. Anyone can [submit a new issue](https://github.com/NIEM/Movement/issues) for the tool for something they would like to see added or a bug. Once reviewed by the engineering team, issues will be added to the Scrum board's backlog. Developers and tool contributors can then address issues from the backlog and track their status using the Scrum board—providing an Agile approach to development and complete transparency to users.
 
 # Running the App with Docker
 
