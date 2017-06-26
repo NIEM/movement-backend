@@ -9,7 +9,7 @@ const getSubGroupHeaders = require('./components/getSubGroupHeaders');
 
 getNonparentTypes()
 .then(nonParentTypeIds => {
-  fs.writeFile('nonparentTypes.json', JSON.stringify(nonParentTypeIds), err => {
+  fs.writeFile('solrIngestData/nonparentTypes.json', JSON.stringify(nonParentTypeIds), err => {
     if (err) {
       console.log(err);
     }
