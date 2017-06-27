@@ -1,7 +1,12 @@
 NIEM - Movement: Backend
 ====================
 
-The other repositories include the [Movement - Webapp](https://github.com/NIEM/movement-frontend) and the [Movement - Solr](https://github.com/NIEM/movement-solr).
+The other code repositories include the [Movement - Webapp](https://github.com/NIEM/movement-frontend) and the [Movement - Solr](https://github.com/NIEM/movement-solr).
+
+Prior to coming to this repo, did you happen to catch our [Movement overview](https://github.com/NIEM/Movement)?
+
+## Got feedback? 
+In the spirit of open-source tooling, we have provided a [Scrum board](https://github.com/NIEM/Movement/projects/1) that allows users to keep track of Movement’s issues and enhancements. Anyone can [submit a new issue](https://github.com/NIEM/Movement/issues) for the tool for something they would like to see added or a bug. Once reviewed by the program office, issues will be added to the Scrum board's backlog. Developers and tool contributors can then address issues from the backlog and track their status using the Scrum board—providing an Agile approach to development and complete transparency to users.
 
 # Running the App with Docker
 
