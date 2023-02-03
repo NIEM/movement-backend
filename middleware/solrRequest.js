@@ -18,7 +18,7 @@ function makeSolrRequest(query) {
   return new Promise((resolve, reject) => {
 
     let options = {
-      hostname: 'localhost',
+      hostname: 'movement-solr',
       port: 8983,
       path: '/solr/dhsniem/select?' + query,
       method: 'GET',
