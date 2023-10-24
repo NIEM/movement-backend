@@ -17,7 +17,7 @@
     "glob": "^7.1.1",
     "helmet": "3.1.0",
     "locreq": "^1.1.0",
-    "lodash": "4.16.6"
+    "lodash": "4.17.21"
   },
   "devDependencies": {
     "nsp": "^2.4.0",
